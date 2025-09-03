@@ -1,10 +1,10 @@
 {
   "name": "elearning-platform",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "echo 'Building Kalpla eLearning Platform v1.0.2' && next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
