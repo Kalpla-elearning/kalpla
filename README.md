@@ -245,3 +245,4 @@ npm run db:migrate
 
 Built with ❤️ using modern web technologies
 # Deployment fix - Thu Sep  4 01:53:59 IST 2025
+# Force new deployment - 1756931313
