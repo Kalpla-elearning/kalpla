@@ -4,13 +4,12 @@ import { useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface EditDegreeProgramModalProps {
-  isOpen: boolean
+  program: any
   onClose: () => void
-  program?: any
+  onSuccess: () => void
 }
 
-export default function EditDegreeProgramModal({ isOpen, onClose, program }: EditDegreeProgramModalProps) {
-  if (!isOpen) return null
+export default function EditDegreeProgramModal({ program, onClose, onSuccess }: EditDegreeProgramModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

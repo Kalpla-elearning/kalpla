@@ -42,11 +42,7 @@ async function getCurriculumTemplatesData() {
           select: { courses: true }
         }
       },
-      orderBy: {
-        _count: {
-          courses: 'desc'
-        }
-      },
+      orderBy: { createdAt: 'desc' },
       take: 5
     }),
     // Recent templates

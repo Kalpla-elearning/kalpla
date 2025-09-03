@@ -96,7 +96,7 @@ async function getPaymentStats() {
         user: {
           select: { name: true, email: true }
         },
-        payments: {
+        payment: {
           select: { status: true, amount: true }
         }
       }

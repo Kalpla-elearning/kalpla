@@ -20,7 +20,8 @@ import {
   MagnifyingGlassIcon,
   ChevronDownIcon,
   UserIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline'
 import { signOut } from 'next-auth/react'
 
@@ -76,6 +77,12 @@ const navigation = [
     href: '/admin/reports', 
     icon: ChartBarIcon,
     description: 'Reports and analytics'
+  },
+  { 
+    name: 'Content Moderation', 
+    href: '/admin/content/moderation', 
+    icon: ShieldCheckIcon,
+    description: 'Review flagged content'
   },
   { 
     name: 'Settings', 

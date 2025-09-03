@@ -56,7 +56,7 @@ async function getAdminStats() {
     // Total blog posts
     prisma.post.count(),
     // Total mentors
-    Promise.resolve(0), // Placeholder for mentor count
+    prisma.mentor.count(),
     // Total payments
     prisma.payment.count({
       where: { status: 'SUCCESS' }
@@ -85,9 +85,23 @@ async function getAdminStats() {
       take: 5
     }),
     // Recent payments (last 7 days)
-    Promise.resolve([]), // Placeholder for recent payments
+    prisma.payment.findMany({
+      where: {
+        createdAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        }
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+        order: { select: { itemTitle: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    }),
     // Active subscriptions
-    Promise.resolve(0), // Placeholder for subscription count
+    prisma.subscription.count({
+      where: { status: 'ACTIVE' }
+    }),
     // Platform stats
     prisma.$transaction([
       prisma.user.count({ where: { isVerified: true } }),
@@ -248,6 +262,13 @@ export default async function AdminDashboardPage() {
       icon: ChartBarIcon,
       href: '/admin/reports',
       color: 'bg-rose-500'
+    },
+    {
+      title: 'Content Moderation',
+      description: 'Review and moderate flagged content',
+      icon: ShieldCheckIcon,
+      href: '/admin/content/moderation',
+      color: 'bg-red-500'
     },
     {
       title: 'Platform Settings',
@@ -440,7 +461,26 @@ export default async function AdminDashboardPage() {
             <h3 className="text-lg font-semibold text-gray-900">Recent Payments</h3>
           </div>
           <div className="p-6">
-                         <p className="text-gray-500 text-center py-4">No recent payments</p>
+            {stats.recentPayments.length > 0 ? (
+              <div className="space-y-4">
+                {stats.recentPayments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{payment.user.name}</p>
+                      <p className="text-sm text-gray-600">{payment.order?.itemTitle || 'Payment'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">₹{payment.amount}</p>
+                      <span className="text-xs text-gray-500">
+                        {new Date(payment.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">No recent payments</p>
+            )}
           </div>
         </div>
 

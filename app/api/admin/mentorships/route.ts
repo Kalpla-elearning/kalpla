@@ -15,10 +15,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || ''
     const category = searchParams.get('category') || ''
-    const level = searchParams.get('level') || ''
-    const format = searchParams.get('format') || ''
+    const status = searchParams.get('status') || ''
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const order = searchParams.get('order') || 'desc'
 
@@ -30,25 +28,16 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { institution: { contains: search, mode: 'insensitive' } }
+        { description: { contains: search, mode: 'insensitive' } }
       ]
-    }
-    
-    if (status && status !== 'all') {
-      where.status = status
     }
     
     if (category) {
       where.category = category
     }
     
-    if (level) {
-      where.level = level
-    }
-    
-    if (format) {
-      where.format = format
+    if (status) {
+      where.isActive = status === 'active'
     }
 
     // Build orderBy clause
@@ -56,17 +45,21 @@ export async function GET(request: NextRequest) {
     orderBy[sortBy] = order
 
     const [programs, total] = await Promise.all([
-      prisma.degreeProgram.findMany({
+      prisma.mentorshipProgram.findMany({
         where,
         skip,
         take: limit,
         orderBy,
         include: {
-          instructor: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true
+          mentor: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true
+                }
+              }
             }
           },
           _count: {
@@ -77,11 +70,11 @@ export async function GET(request: NextRequest) {
           }
         }
       }),
-      prisma.degreeProgram.count({ where })
+      prisma.mentorshipProgram.count({ where })
     ])
 
     // Calculate stats
-    const stats = await prisma.degreeProgram.aggregate({
+    const stats = await prisma.mentorshipProgram.aggregate({
       _count: {
         id: true
       },
@@ -90,19 +83,17 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const publishedCount = await prisma.degreeProgram.count({
-      where: { status: 'PUBLISHED' }
+    const activeCount = await prisma.mentorshipProgram.count({
+      where: { isActive: true }
     })
 
-    const draftCount = await prisma.degreeProgram.count({
-      where: { status: 'DRAFT' }
+    const inactiveCount = await prisma.mentorshipProgram.count({
+      where: { isActive: false }
     })
 
-    const featuredCount = await prisma.degreeProgram.count({
-      where: { isFeatured: true }
-    })
+    const totalEnrollments = await prisma.mentorshipEnrollment.count()
 
-    const totalEnrollments = await prisma.degreeEnrollment.count()
+    const totalMentors = await prisma.mentor.count()
 
     const totalPages = Math.ceil(total / limit)
 
@@ -113,19 +104,15 @@ export async function GET(request: NextRequest) {
           ...program,
           enrollmentCount: program._count.enrollments,
           reviewCount: program._count.reviews,
-          averageRating: program.rating,
-          syllabus: program.syllabus ? JSON.parse(program.syllabus) : [],
-          tags: program.tags ? JSON.parse(program.tags) : [],
-          features: program.features ? JSON.parse(program.features) : [],
-          requirements: program.requirements ? JSON.parse(program.requirements) : []
+          mentorName: program.mentor.user.name
         })),
         stats: {
           totalPrograms: stats._count.id,
+          totalMentors,
           totalEnrollments,
           totalRevenue: stats._sum.price || 0,
-          publishedPrograms: publishedCount,
-          draftPrograms: draftCount,
-          featuredPrograms: featuredCount
+          activePrograms: activeCount,
+          inactivePrograms: inactiveCount
         },
         pagination: {
           page,
@@ -136,7 +123,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching degree programs:', error)
+    console.error('Error fetching mentorship programs:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -156,59 +143,44 @@ export async function POST(request: NextRequest) {
     const {
       title,
       description,
-      institution,
-      location,
-      duration,
-      format,
-      level,
-      price,
-      currency,
-      syllabus,
-      imageUrl,
-      brochureUrl,
       category,
-      tags,
-      features,
-      requirements,
-      instructorId,
-      isFeatured,
-      status,
-      maxStudents
+      duration,
+      price,
+      maxStudents,
+      mentorId,
+      isActive
     } = body
 
     // Validate required fields
-    if (!title || !description || !institution || !level || !price) {
+    if (!title || !description || !category || !duration || !price || !mentorId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    // Check if mentor exists
+    const mentor = await prisma.mentor.findUnique({
+      where: { id: mentorId }
+    })
 
-    const program = await prisma.degreeProgram.create({
+    if (!mentor) {
+      return NextResponse.json(
+        { error: 'Mentor not found' },
+        { status: 404 }
+      )
+    }
+
+    const program = await prisma.mentorshipProgram.create({
       data: {
         title,
-        slug,
         description,
-        institution,
-        location: location || '',
-        duration: duration || '',
-        format: format || 'ONLINE',
-        level,
+        category,
+        duration: parseInt(duration),
         price: parseFloat(price),
-        currency: currency || 'INR',
-        syllabus: syllabus ? JSON.stringify(syllabus) : null,
-        imageUrl,
-        brochureUrl,
-        category: category || '',
-        tags: tags ? JSON.stringify(tags) : null,
-        features: features ? JSON.stringify(features) : null,
-        requirements: requirements ? JSON.stringify(requirements) : null,
-        instructorId: instructorId || null,
-        isFeatured: isFeatured || false,
-        status: status || 'DRAFT',
-        maxStudents: maxStudents ? parseInt(maxStudents) : null
+        maxStudents: parseInt(maxStudents),
+        mentorId,
+        isActive: isActive !== false
       }
     })
 
@@ -217,7 +189,7 @@ export async function POST(request: NextRequest) {
       data: program
     })
   } catch (error) {
-    console.error('Error creating degree program:', error)
+    console.error('Error creating mentorship program:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

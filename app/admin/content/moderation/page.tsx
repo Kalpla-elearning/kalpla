@@ -1,496 +1,402 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
-import Link from 'next/link'
+'use client'
+
+import { useState, useEffect } from 'react'
 import { 
   ExclamationTriangleIcon,
-  FlagIcon,
-  EyeIcon,
   CheckCircleIcon,
   XCircleIcon,
+  EyeIcon,
+  FlagIcon,
+  ShieldCheckIcon,
+  DocumentTextIcon,
   ChatBubbleLeftIcon,
   StarIcon,
-  PlayIcon,
-  UserIcon,
-  CalendarIcon,
-  ShieldCheckIcon,
-  TrashIcon,
-  ClockIcon
+  VideoCameraIcon
 } from '@heroicons/react/24/outline'
 
-export const dynamic = 'force-dynamic'
-
-async function getModerationData() {
-  const [
-    flaggedComments,
-    flaggedReviews,
-    flaggedVideos,
-    totalFlagged,
-    resolvedFlags,
-    pendingFlags,
-    recentActivity
-  ] = await Promise.all([
-    // Flagged comments
-    prisma.comment.findMany({
-      where: { isFlagged: true },
-      include: {
-        author: {
-          select: { name: true, email: true }
-        },
-        post: {
-          select: { title: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10
-    }),
-    // Flagged reviews
-    prisma.review.findMany({
-      where: { isFlagged: true },
-      include: {
-        user: {
-          select: { name: true, email: true }
-        },
-        course: {
-          select: { title: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10
-    }),
-    // Flagged videos (content)
-    prisma.content.findMany({
-      where: { isFlagged: true },
-      include: {
-        module: {
-          select: { 
-            course: {
-              select: { title: true }
-            }
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10
-    }),
-    // Total flagged content
-    prisma.$transaction([
-      prisma.comment.count({ where: { isFlagged: true } }),
-      prisma.review.count({ where: { isFlagged: true } }),
-      prisma.content.count({ where: { isFlagged: true } })
-    ]),
-    // Resolved flags (last 7 days)
-    prisma.$transaction([
-      prisma.comment.count({ 
-        where: { 
-          isFlagged: false,
-          updatedAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          }
-        }
-      }),
-      prisma.review.count({ 
-        where: { 
-          isFlagged: false,
-          updatedAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          }
-        }
-      }),
-      prisma.content.count({ 
-        where: { 
-          isFlagged: false,
-          updatedAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          }
-        }
-      })
-    ]),
-    // Pending flags
-    prisma.$transaction([
-      prisma.comment.count({ where: { isFlagged: true, isReviewed: false } }),
-      prisma.review.count({ where: { isFlagged: true, isReviewed: false } }),
-      prisma.content.count({ where: { isFlagged: true, isReviewed: false } })
-    ]),
-    // Recent moderation activity
-    prisma.comment.findMany({
-      where: {
-        OR: [
-          { isFlagged: true },
-          { isReviewed: true }
-        ]
-      },
-      include: {
-        author: {
-          select: { name: true }
-        },
-        post: {
-          select: { title: true }
-        }
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: 5
-    })
-  ])
-
-  const [totalFlaggedComments, totalFlaggedReviews, totalFlaggedVideos] = totalFlagged
-  const [resolvedComments, resolvedReviews, resolvedVideos] = resolvedFlags
-  const [pendingComments, pendingReviews, pendingVideos] = pendingFlags
-
-  return {
-    flaggedComments,
-    flaggedReviews,
-    flaggedVideos,
-    totalFlaggedComments,
-    totalFlaggedReviews,
-    totalFlaggedVideos,
-    resolvedComments,
-    resolvedReviews,
-    resolvedVideos,
-    pendingComments,
-    pendingReviews,
-    pendingVideos,
-    recentActivity
-  }
+interface FlaggedContent {
+  posts: any[]
+  comments: any[]
+  reviews: any[]
+  content: any[]
 }
 
-export default async function AdminContentModerationPage() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user || session.user.role !== 'ADMIN') {
-    redirect('/auth/signin')
+interface ModerationStats {
+  totalFlaggedPosts: number
+  totalFlaggedComments: number
+  totalFlaggedReviews: number
+  totalFlaggedContent: number
+  pendingReviews: number
+  totalReports: number
+}
+
+export default function ContentModerationPage() {
+  const [flaggedContent, setFlaggedContent] = useState<FlaggedContent>({
+    posts: [],
+    comments: [],
+    reviews: [],
+    content: []
+  })
+  const [stats, setStats] = useState<ModerationStats>({
+    totalFlaggedPosts: 0,
+    totalFlaggedComments: 0,
+    totalFlaggedReviews: 0,
+    totalFlaggedContent: 0,
+    pendingReviews: 0,
+    totalReports: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('all')
+
+  useEffect(() => {
+    fetchModerationData()
+  }, [])
+
+  const fetchModerationData = async () => {
+    try {
+      const response = await fetch('/api/admin/content-moderation')
+      const data = await response.json()
+
+      if (data.success) {
+        setFlaggedContent(data.data.flaggedContent)
+        setStats(data.data.stats)
+      }
+    } catch (error) {
+      console.error('Error fetching moderation data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const data = await getModerationData()
+  const handleModerationAction = async (type: string, id: string, action: string) => {
+    try {
+      const response = await fetch('/api/admin/content-moderation', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type,
+          id,
+          action
+        })
+      })
 
-  const totalFlagged = data.totalFlaggedComments + data.totalFlaggedReviews + data.totalFlaggedVideos
-  const totalResolved = data.resolvedComments + data.resolvedReviews + data.resolvedVideos
-  const totalPending = data.pendingComments + data.pendingReviews + data.pendingVideos
+      if (response.ok) {
+        fetchModerationData() // Refresh data
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Error processing moderation action')
+      }
+    } catch (error) {
+      console.error('Error processing moderation action:', error)
+      alert('Error processing moderation action')
+    }
+  }
+
+  const getContentIcon = (type: string) => {
+    switch (type) {
+      case 'post':
+        return <DocumentTextIcon className="h-5 w-5 text-blue-600" />
+      case 'comment':
+        return <ChatBubbleLeftIcon className="h-5 w-5 text-green-600" />
+      case 'review':
+        return <StarIcon className="h-5 w-5 text-yellow-600" />
+      case 'content':
+        return <VideoCameraIcon className="h-5 w-5 text-purple-600" />
+      default:
+        return <FlagIcon className="h-5 w-5 text-gray-600" />
+    }
+  }
+
+  const getContentTypeLabel = (type: string) => {
+    switch (type) {
+      case 'post':
+        return 'Blog Post'
+      case 'comment':
+        return 'Comment'
+      case 'review':
+        return 'Review'
+      case 'content':
+        return 'Course Content'
+      default:
+        return 'Content'
+    }
+  }
+
+  const renderContentItem = (item: any, type: string) => (
+    <div key={item.id} className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center mb-2">
+            {getContentIcon(type)}
+            <span className="ml-2 text-sm font-medium text-gray-600">
+              {getContentTypeLabel(type)}
+            </span>
+            <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+              Flagged
+            </span>
+          </div>
+          
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            {item.title || item.content?.substring(0, 100) + '...' || 'Untitled'}
+          </h3>
+          
+          <div className="text-sm text-gray-600 mb-3">
+            <p><strong>Author:</strong> {item.author?.name || item.user?.name || 'Unknown'}</p>
+            <p><strong>Created:</strong> {new Date(item.createdAt).toLocaleDateString()}</p>
+            {item.post && <p><strong>Post:</strong> {item.post.title}</p>}
+            {item.course && <p><strong>Course:</strong> {item.course.title}</p>}
+          </div>
+          
+          <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-md">
+            {item.content?.substring(0, 200)}...
+          </div>
+        </div>
+        
+        <div className="ml-4 flex flex-col space-y-2">
+          <button
+            onClick={() => handleModerationAction(type, item.id, 'approve')}
+            className="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 flex items-center"
+          >
+            <CheckCircleIcon className="h-4 w-4 mr-1" />
+            Approve
+          </button>
+          <button
+            onClick={() => handleModerationAction(type, item.id, 'reject')}
+            className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 flex items-center"
+          >
+            <XCircleIcon className="h-4 w-4 mr-1" />
+            Reject
+          </button>
+          <button className="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 flex items-center">
+            <EyeIcon className="h-4 w-4 mr-1" />
+            View
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Content Moderation</h1>
-          <p className="text-gray-600 mt-2">Review and manage flagged content across the platform</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Link
-            href="/admin/content/guidelines"
-            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center"
-          >
-            <ShieldCheckIcon className="h-5 w-5 mr-2" />
-            Moderation Guidelines
-          </Link>
-          <Link
-            href="/admin/content/reports"
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center"
-          >
-            <FlagIcon className="h-5 w-5 mr-2" />
-            View Reports
-          </Link>
+          <h2 className="text-2xl font-bold text-gray-900">Content Moderation</h2>
+          <p className="text-gray-600">Review and moderate flagged content across the platform</p>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
+            <div className="p-2 bg-red-100 rounded-lg">
+              <FlagIcon className="h-6 w-6 text-red-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Flagged</p>
-              <p className="text-2xl font-bold text-gray-900">{totalFlagged}</p>
-              <p className="text-xs text-gray-500">Content requiring review</p>
+              <p className="text-sm font-medium text-gray-600">Total Reports</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalReports}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <DocumentTextIcon className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Flagged Posts</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalFlaggedPosts}</p>
+            </div>
+        </div>
+      </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <ChatBubbleLeftIcon className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Flagged Comments</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalFlaggedComments}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ClockIcon className="h-8 w-8 text-orange-600" />
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <StarIcon className="h-6 w-6 text-yellow-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pending Review</p>
-              <p className="text-2xl font-bold text-gray-900">{totalPending}</p>
-              <p className="text-xs text-gray-500">Awaiting action</p>
+              <p className="text-sm font-medium text-gray-600">Flagged Reviews</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalFlaggedReviews}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <CheckCircleIcon className="h-8 w-8 text-green-600" />
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <VideoCameraIcon className="h-6 w-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Resolved This Week</p>
-              <p className="text-2xl font-bold text-gray-900">{totalResolved}</p>
-              <p className="text-xs text-gray-500">Successfully moderated</p>
+              <p className="text-sm font-medium text-gray-600">Flagged Content</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalFlaggedContent}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ShieldCheckIcon className="h-8 w-8 text-blue-600" />
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <ShieldCheckIcon className="h-6 w-6 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Moderation Rate</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {totalFlagged > 0 ? Math.round((totalResolved / (totalFlagged + totalResolved)) * 100) : 100}%
-              </p>
-              <p className="text-xs text-gray-500">Efficiency score</p>
+              <p className="text-sm font-medium text-gray-600">Pending Reviews</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.pendingReviews}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Flagged Content Tabs */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Flagged Content</h3>
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8 px-6">
+            {[
+              { id: 'all', name: 'All Content', count: stats.totalReports },
+              { id: 'posts', name: 'Posts', count: stats.totalFlaggedPosts },
+              { id: 'comments', name: 'Comments', count: stats.totalFlaggedComments },
+              { id: 'reviews', name: 'Reviews', count: stats.totalFlaggedReviews },
+              { id: 'content', name: 'Course Content', count: stats.totalFlaggedContent }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.id
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.name} ({tab.count})
+              </button>
+            ))}
+          </nav>
         </div>
+
         <div className="p-6">
-          {/* Comments */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-md font-semibold text-gray-900 flex items-center">
-                <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
-                Flagged Comments ({data.totalFlaggedComments})
-              </h4>
-              <Link
-                href="/admin/content/comments"
-                className="text-sm text-primary-600 hover:text-primary-700"
-              >
-                View all
-              </Link>
-            </div>
-            {data.flaggedComments.length > 0 ? (
+          {activeTab === 'all' && (
+            <div className="space-y-6">
+              {flaggedContent.posts.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Flagged Blog Posts</h3>
               <div className="space-y-4">
-                {data.flaggedComments.map((comment) => (
-                  <div key={comment.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center mb-2">
-                          <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm font-medium text-gray-900">{comment.author.name}</span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {new Date(comment.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700 mb-2">{comment.content}</p>
-                        <p className="text-xs text-gray-500">Post: {comment.post.title}</p>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors">
-                          <CheckCircleIcon className="h-3 w-3 mr-1" />
-                          Approve
-                        </button>
-                        <button className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors">
-                          <XCircleIcon className="h-3 w-3 mr-1" />
-                          Remove
-                        </button>
-                        <Link
-                          href={`/admin/content/comments/${comment.id}`}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </Link>
+                    {flaggedContent.posts.map(post => renderContentItem(post, 'post'))}
                       </div>
                     </div>
+              )}
+              
+              {flaggedContent.comments.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Flagged Comments</h3>
+                  <div className="space-y-4">
+                    {flaggedContent.comments.map(comment => renderContentItem(comment, 'comment'))}
                   </div>
-                ))}
               </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No flagged comments</p>
-            )}
-          </div>
-
-          {/* Reviews */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-md font-semibold text-gray-900 flex items-center">
-                <StarIcon className="h-5 w-5 mr-2" />
-                Flagged Reviews ({data.totalFlaggedReviews})
-              </h4>
-              <Link
-                href="/admin/content/reviews"
-                className="text-sm text-primary-600 hover:text-primary-700"
-              >
-                View all
-              </Link>
-            </div>
-            {data.flaggedReviews.length > 0 ? (
+              )}
+              
+              {flaggedContent.reviews.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Flagged Reviews</h3>
               <div className="space-y-4">
-                {data.flaggedReviews.map((review) => (
-                  <div key={review.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center mb-2">
-                          <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm font-medium text-gray-900">{review.user.name}</span>
-                          <div className="flex items-center ml-2">
-                            {[...Array(5)].map((_, i) => (
-                              <StarIcon
-                                key={i}
-                                className={`h-3 w-3 ${
-                                  i < review.rating ? 'text-yellow-400' : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {new Date(review.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700 mb-2">{review.comment}</p>
-                        <p className="text-xs text-gray-500">Course: {review.course.title}</p>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors">
-                          <CheckCircleIcon className="h-3 w-3 mr-1" />
-                          Approve
-                        </button>
-                        <button className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors">
-                          <XCircleIcon className="h-3 w-3 mr-1" />
-                          Remove
-                        </button>
-                        <Link
-                          href={`/admin/content/reviews/${review.id}`}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </Link>
+                    {flaggedContent.reviews.map(review => renderContentItem(review, 'review'))}
                       </div>
                     </div>
+              )}
+              
+              {flaggedContent.content.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Flagged Course Content</h3>
+                  <div className="space-y-4">
+                    {flaggedContent.content.map(content => renderContentItem(content, 'content'))}
                   </div>
-                ))}
               </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No flagged reviews</p>
-            )}
+              )}
+              
+              {stats.totalReports === 0 && (
+                <div className="text-center py-12">
+                  <ShieldCheckIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No flagged content</h3>
+                  <p className="text-gray-600">All content is clean and properly moderated.</p>
           </div>
-
-          {/* Videos */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-md font-semibold text-gray-900 flex items-center">
-                <PlayIcon className="h-5 w-5 mr-2" />
-                Flagged Videos ({data.totalFlaggedVideos})
-              </h4>
-              <Link
-                href="/admin/content/videos"
-                className="text-sm text-primary-600 hover:text-primary-700"
-              >
-                View all
-              </Link>
+              )}
             </div>
-            {data.flaggedVideos.length > 0 ? (
-              <div className="space-y-4">
-                {data.flaggedVideos.map((video) => (
-                  <div key={video.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h5 className="text-sm font-medium text-gray-900 mb-2">{video.title}</h5>
-                        <p className="text-sm text-gray-700 mb-2">{video.description}</p>
-                                                 <p className="text-xs text-gray-500">Course: {video.module.course.title}</p>
-                        <p className="text-xs text-gray-500">
-                          Duration: {video.duration} minutes
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors">
-                          <CheckCircleIcon className="h-3 w-3 mr-1" />
-                          Approve
-                        </button>
-                        <button className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors">
-                          <XCircleIcon className="h-3 w-3 mr-1" />
-                          Remove
-                        </button>
-                        <Link
-                          href={`/admin/content/videos/${video.id}`}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No flagged videos</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Moderation Activity</h3>
-        </div>
-        <div className="p-6">
-          {data.recentActivity.length > 0 ? (
-            <div className="space-y-4">
-              {data.recentActivity.map((comment) => (
-                <div key={comment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center">
-                    <ChatBubbleLeftIcon className="h-5 w-5 text-gray-400 mr-3" />
-                    <div>
-                                             <p className="text-sm font-medium text-gray-900">
-                         Comment by {comment.author.name}
-                       </p>
-                       <p className="text-sm text-gray-600">Post: {comment.post.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {comment.isFlagged ? 'Flagged' : 'Reviewed'} {new Date(comment.updatedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    comment.isFlagged ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                  }`}>
-                    {comment.isFlagged ? 'Flagged' : 'Reviewed'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-4">No recent moderation activity</p>
           )}
-        </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <button className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Bulk Approve Selected</span>
-            </button>
-            <button className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <XCircleIcon className="h-5 w-5 text-red-600 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Bulk Remove Selected</span>
-            </button>
-            <button className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <ShieldCheckIcon className="h-5 w-5 text-blue-600 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Update Guidelines</span>
-            </button>
-            <button className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <TrashIcon className="h-5 w-5 text-gray-600 mr-2" />
-              <span className="text-sm font-medium text-gray-700">Clear Resolved</span>
-            </button>
+          {activeTab === 'posts' && (
+              <div className="space-y-4">
+              {flaggedContent.posts.map(post => renderContentItem(post, 'post'))}
+              {flaggedContent.posts.length === 0 && (
+                <div className="text-center py-12">
+                  <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No flagged posts</h3>
+                  <p className="text-gray-600">All blog posts are clean.</p>
+                      </div>
+              )}
+                      </div>
+          )}
+
+          {activeTab === 'comments' && (
+            <div className="space-y-4">
+              {flaggedContent.comments.map(comment => renderContentItem(comment, 'comment'))}
+              {flaggedContent.comments.length === 0 && (
+                <div className="text-center py-12">
+                  <ChatBubbleLeftIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No flagged comments</h3>
+                  <p className="text-gray-600">All comments are clean.</p>
+                    </div>
+              )}
+                  </div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <div className="space-y-4">
+              {flaggedContent.reviews.map(review => renderContentItem(review, 'review'))}
+              {flaggedContent.reviews.length === 0 && (
+                <div className="text-center py-12">
+                  <StarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No flagged reviews</h3>
+                  <p className="text-gray-600">All reviews are clean.</p>
+              </div>
+            )}
           </div>
+          )}
+
+          {activeTab === 'content' && (
+            <div className="space-y-4">
+              {flaggedContent.content.map(content => renderContentItem(content, 'content'))}
+              {flaggedContent.content.length === 0 && (
+                <div className="text-center py-12">
+                  <VideoCameraIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No flagged content</h3>
+                  <p className="text-gray-600">All course content is clean.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

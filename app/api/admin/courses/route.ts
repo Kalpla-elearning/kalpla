@@ -110,10 +110,20 @@ export async function GET(request: NextRequest) {
         courses: courses.map(course => ({
           ...course,
           enrollmentCount: course._count.enrollments,
-          totalLessons: 0, // TODO: Calculate from lessons
-          totalDuration: 0, // TODO: Calculate from lessons
+          totalLessons: 0, // TODO: Calculate from modules/contents
+          totalDuration: course.duration || 0,
           averageRating: 0, // TODO: Calculate from reviews
-          completionRate: 0 // TODO: Calculate completion rate
+          completionRate: 0, // TODO: Calculate completion rate
+          access: course.price === 0 ? 'FREE' : 'PAID',
+          currency: course.currency || 'INR',
+          thumbnailUrl: course.thumbnail,
+          videoUrl: null,
+          subcategory: course.category,
+          level: course.level || 'BEGINNER',
+          tags: course.tags ? JSON.parse(course.tags) : [],
+          requirements: [],
+          learningOutcomes: [],
+          isFeatured: false
         })),
         stats: {
           totalCourses: stats._count.id,

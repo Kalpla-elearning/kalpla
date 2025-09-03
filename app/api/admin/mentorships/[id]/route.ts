@@ -14,14 +14,19 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const program = await prisma.degreeProgram.findUnique({
+    const program = await prisma.mentorshipProgram.findUnique({
       where: { id: params.id },
       include: {
-        instructor: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true
+        mentor: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true
+              }
+            }
           }
         },
         enrollments: {
@@ -50,21 +55,15 @@ export async function GET(
     })
 
     if (!program) {
-      return NextResponse.json({ error: 'Degree program not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Mentorship program not found' }, { status: 404 })
     }
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...program,
-        syllabus: program.syllabus ? JSON.parse(program.syllabus) : [],
-        tags: program.tags ? JSON.parse(program.tags) : [],
-        features: program.features ? JSON.parse(program.features) : [],
-        requirements: program.requirements ? JSON.parse(program.requirements) : []
-      }
+      data: program
     })
   } catch (error) {
-    console.error('Error fetching degree program:', error)
+    console.error('Error fetching mentorship program:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -87,62 +86,35 @@ export async function PUT(
     const {
       title,
       description,
-      institution,
-      location,
-      duration,
-      format,
-      level,
-      price,
-      currency,
-      syllabus,
-      imageUrl,
-      brochureUrl,
       category,
-      tags,
-      features,
-      requirements,
-      instructorId,
-      isFeatured,
-      status,
-      maxStudents
+      duration,
+      price,
+      maxStudents,
+      mentorId,
+      isActive
     } = body
 
     // Check if program exists
-    const existingProgram = await prisma.degreeProgram.findUnique({
+    const existingProgram = await prisma.mentorshipProgram.findUnique({
       where: { id: params.id }
     })
 
     if (!existingProgram) {
-      return NextResponse.json({ error: 'Degree program not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Mentorship program not found' }, { status: 404 })
     }
 
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-
     // Update program
-    const updatedProgram = await prisma.degreeProgram.update({
+    const updatedProgram = await prisma.mentorshipProgram.update({
       where: { id: params.id },
       data: {
         title,
-        slug,
         description,
-        institution,
-        location,
-        duration,
-        format,
-        level,
-        price: parseFloat(price),
-        currency,
-        syllabus: syllabus ? JSON.stringify(syllabus) : null,
-        imageUrl,
-        brochureUrl,
         category,
-        tags: tags ? JSON.stringify(tags) : null,
-        features: features ? JSON.stringify(features) : null,
-        requirements: requirements ? JSON.stringify(requirements) : null,
-        instructorId: instructorId || null,
-        isFeatured,
-        status,
-        maxStudents: maxStudents ? parseInt(maxStudents) : null
+        duration: duration ? parseInt(duration) : existingProgram.duration,
+        price: price ? parseFloat(price) : existingProgram.price,
+        maxStudents: maxStudents ? parseInt(maxStudents) : existingProgram.maxStudents,
+        mentorId: mentorId || existingProgram.mentorId,
+        isActive: isActive !== undefined ? isActive : existingProgram.isActive
       }
     })
 
@@ -151,7 +123,7 @@ export async function PUT(
       data: updatedProgram
     })
   } catch (error) {
-    console.error('Error updating degree program:', error)
+    console.error('Error updating mentorship program:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -171,7 +143,7 @@ export async function DELETE(
     }
 
     // Check if program exists
-    const existingProgram = await prisma.degreeProgram.findUnique({
+    const existingProgram = await prisma.mentorshipProgram.findUnique({
       where: { id: params.id },
       include: {
         _count: {
@@ -183,28 +155,28 @@ export async function DELETE(
     })
 
     if (!existingProgram) {
-      return NextResponse.json({ error: 'Degree program not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Mentorship program not found' }, { status: 404 })
     }
 
     // Check if there are enrollments
     if (existingProgram._count.enrollments > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete degree program with existing enrollments' },
+        { error: 'Cannot delete mentorship program with existing enrollments' },
         { status: 400 }
       )
     }
 
     // Delete program
-    await prisma.degreeProgram.delete({
+    await prisma.mentorshipProgram.delete({
       where: { id: params.id }
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Degree program deleted successfully'
+      message: 'Mentorship program deleted successfully'
     })
   } catch (error) {
-    console.error('Error deleting degree program:', error)
+    console.error('Error deleting mentorship program:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
