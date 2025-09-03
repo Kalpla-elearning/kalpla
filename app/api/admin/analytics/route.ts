@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
           _count: { id: true }
         }),
 
-        // Revenue by order type
+        // Revenue by order type - FIXED: using 'orderId' instead of 'order'
         prisma.payment.groupBy({
           by: ['orderId'],
           _sum: { amount: true },
