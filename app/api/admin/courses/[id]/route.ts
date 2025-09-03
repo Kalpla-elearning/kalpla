@@ -107,7 +107,7 @@ export async function PUT(
         access,
         price: parseFloat(price),
         currency,
-        thumbnailUrl,
+        thumbnail: thumbnailUrl,
         videoUrl,
         duration: duration ? parseInt(duration) : 0,
         level,

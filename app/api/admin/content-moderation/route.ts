@@ -117,19 +117,16 @@ export async function GET(request: NextRequest) {
       totalFlaggedComments,
       totalFlaggedReviews,
       totalFlaggedContent,
-      pendingReviews,
-      totalReports
+      pendingReviews
     ] = await Promise.all([
       prisma.post.count({ where: { isFlagged: true } }),
       prisma.comment.count({ where: { isFlagged: true } }),
       prisma.review.count({ where: { isFlagged: true } }),
       prisma.content.count({ where: { isFlagged: true } }),
-      prisma.review.count({ where: { isReviewed: false } }),
-      prisma.post.count({ where: { isFlagged: true } }) + 
-      prisma.comment.count({ where: { isFlagged: true } }) +
-      prisma.review.count({ where: { isFlagged: true } }) +
-      prisma.content.count({ where: { isFlagged: true } })
+      prisma.review.count({ where: { isReviewed: false } })
     ])
+
+    const totalReports = totalFlaggedPosts + totalFlaggedComments + totalFlaggedReviews + totalFlaggedContent
 
     return NextResponse.json({
       success: true,

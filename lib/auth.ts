@@ -1,10 +1,13 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import GoogleProvider from 'next-auth/providers/google'
+import GitHubProvider from 'next-auth/providers/github'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 export const authOptions: NextAuthOptions = {
+  // Use PrismaAdapter for OAuth providers, but handle credentials manually
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
@@ -28,6 +31,11 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Check if user has a password (not an OAuth user)
+        if (!user.password) {
+          return null // OAuth users can't sign in with credentials
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
@@ -44,25 +52,46 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
         }
       }
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    GitHubProvider({
+      clientId: process.env.GITHUB_ID!,
+      clientSecret: process.env.GITHUB_SECRET!,
     })
   ],
   session: {
-    strategy: 'jwt'
+    strategy: 'database' // Use database strategy with PrismaAdapter
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      // Allow OAuth sign-ins
+      if (account?.provider === 'google' || account?.provider === 'github') {
+        return true
+      }
+      // Allow credentials sign-ins
+      if (account?.provider === 'credentials') {
+        return true
+      }
+      return false
+    },
+    async session({ session, user }) {
+      // Add user role to session
       if (user) {
-        token.role = user.role
+        session.user.id = user.id
+        session.user.role = (user as any).role || 'STUDENT'
+      }
+      return session
+    },
+    async jwt({ token, user, account }) {
+      // For credentials provider, add role to token
+      if (user && account?.provider === 'credentials') {
+        token.role = (user as any).role
         token.id = user.id
       }
       return token
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-      }
-      return session
     }
   },
   pages: {
