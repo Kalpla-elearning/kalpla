@@ -1,0 +1,289 @@
+// WordPress-like blog schema for SQLite development
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  role          String    @default("STUDENT") // ADMIN, INSTRUCTOR, STUDENT
+  avatar        String?
+  bio           String?
+  isVerified    Boolean   @default(false)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  courses       Course[]  @relation("CourseInstructor")
+  enrollments   Enrollment[]
+  progressRecords Progress[]
+  reviews       Review[]
+  posts         Post[]    @relation("AuthoredPosts")
+  comments      Comment[] @relation("CommentAuthor")
+  media         Media[]   @relation("MediaAuthor")
+
+  @@map("users")
+}
+
+model Course {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  thumbnail     String?
+  price         Float
+  category      String?
+  tags          String?   // JSON string for SQLite
+  instructorId  String
+  status        String    @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  instructor    User      @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  modules       Module[]
+  enrollments   Enrollment[]
+  reviews       Review[]
+
+  @@map("courses")
+}
+
+model Module {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  courseId    String
+  order       Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  contents    Content[]
+
+  @@map("modules")
+}
+
+model Content {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  type        String    // VIDEO, PDF, QUIZ, ASSIGNMENT, TEXT
+  url         String?
+  content     String?   // For text content
+  moduleId    String
+  order       Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  module      Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress    Progress[]
+
+  @@map("contents")
+}
+
+model Enrollment {
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  status      String    @default("PENDING") // PENDING, ACTIVE, COMPLETED, CANCELLED
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress    Progress[]
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Progress {
+  id          String    @id @default(cuid())
+  userId      String
+  contentId   String
+  enrollmentId String
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  enrollment  Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+  @@map("progress")
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  userId      String
+  courseId    String
+  rating      Int
+  comment     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("reviews")
+}
+
+// WordPress-like Blog Models
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  color       String?   // Hex color for category
+  parentId    String?   // For hierarchical categories
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  posts       PostCategory[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  color       String?   // Hex color for tag
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  posts       PostTag[]
+
+  @@map("tags")
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  excerpt     String?   // Short description
+  content     String    // Rich HTML content
+  featuredImage String? // Featured image URL
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED, PRIVATE, SCHEDULED
+  visibility  String    @default("PUBLIC") // PUBLIC, PRIVATE, PASSWORD_PROTECTED
+  password    String?   // For password-protected posts
+  publishedAt DateTime?
+  scheduledAt DateTime? // For scheduled posts
+  authorId    String
+  viewCount   Int       @default(0)
+  commentCount Int      @default(0)
+  likeCount   Int       @default(0)
+  metaTitle   String?   // SEO meta title
+  metaDescription String? // SEO meta description
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  author      User      @relation("AuthoredPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  categories  PostCategory[]
+  tags        PostTag[]
+  comments    Comment[]
+  media       PostMedia[]
+
+  @@map("posts")
+}
+
+model PostCategory {
+  id         String   @id @default(cuid())
+  postId     String
+  categoryId String
+
+  // Relations
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, categoryId])
+  @@map("post_categories")
+}
+
+model PostTag {
+  id     String @id @default(cuid())
+  postId String
+  tagId  String
+
+  // Relations
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+  @@map("post_tags")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  content   String
+  authorId  String
+  postId    String
+  parentId  String?   // For nested comments
+  status    String    @default("PENDING") // PENDING, APPROVED, SPAM, TRASH
+  isApproved Boolean  @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  author    User      @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model Media {
+  id          String    @id @default(cuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int       // File size in bytes
+  url         String    // File URL
+  alt         String?   // Alt text for images
+  caption     String?   // Caption for images
+  description String?   // Description
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  author      User      @relation("MediaAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  posts       PostMedia[]
+
+  @@map("media")
+}
+
+model PostMedia {
+  id      String @id @default(cuid())
+  postId  String
+  mediaId String
+
+  // Relations
+  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  media   Media  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, mediaId])
+  @@map("post_media")
+}
