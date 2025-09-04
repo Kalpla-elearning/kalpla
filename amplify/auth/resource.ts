@@ -7,28 +7,29 @@ import { defineAuth } from '@aws-amplify/backend';
 export const auth = defineAuth({
   loginWith: {
     email: true,
-    externalProviders: {
-      google: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        scopes: ['openid', 'email', 'profile'],
-      },
-      github: {
-        clientId: process.env.GITHUB_CLIENT_ID!,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-        scopes: ['user:email'],
-      },
-      callbackUrls: [
-        'http://localhost:3000',
-        'https://your-domain.amplifyapp.com',
-        'https://your-custom-domain.com'
-      ],
-      logoutUrls: [
-        'http://localhost:3000',
-        'https://your-domain.amplifyapp.com',
-        'https://your-custom-domain.com'
-      ],
-    },
+    // OAuth providers can be added later once AWS permissions are fixed
+    // externalProviders: {
+    //   google: {
+    //     clientId: process.env.GOOGLE_CLIENT_ID!,
+    //     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    //     scopes: ['openid', 'email', 'profile'],
+    //   },
+    //   github: {
+    //     clientId: process.env.GITHUB_CLIENT_ID!,
+    //     clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    //     scopes: ['user:email'],
+    //   },
+    //   callbackUrls: [
+    //     'http://localhost:3000',
+    //     'https://your-domain.amplifyapp.com',
+    //     'https://your-custom-domain.com'
+    //   ],
+    //   logoutUrls: [
+    //     'http://localhost:3000',
+    //     'https://your-domain.amplifyapp.com',
+    //     'https://your-custom-domain.com'
+    //   ],
+    // },
   },
   userAttributes: {
     email: {

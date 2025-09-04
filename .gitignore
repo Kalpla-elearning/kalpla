@@ -104,3 +104,8 @@ Thumbs.db
 
 # Build artifacts
 *.tsbuildinfo
+
+# amplify
+.amplify
+amplify_outputs*
+amplifyconfiguration*
