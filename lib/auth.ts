@@ -77,15 +77,6 @@ export const authOptions: NextAuthOptions = {
       }
       return false
     },
-    async session({ session, user }) {
-      // Add user role to session
-      if (user) {
-        session.user.id = user.id
-        session.user.role = (user as any).role || 'STUDENT'
-        session.user.image = (user as any).image
-      }
-      return session
-    },
     async jwt({ token, user, account }) {
       // For credentials provider, add role to token
       if (user && account?.provider === 'credentials') {
@@ -93,6 +84,25 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
       }
       return token
+    },
+    async session({ session, token, user }) {
+      // Handle both JWT and database sessions
+      if (token) {
+        session.user.id = token.id as string
+        session.user.role = token.role as string || 'STUDENT'
+      } else if (user) {
+        session.user.id = user.id
+        session.user.role = (user as any).role || 'STUDENT'
+        session.user.image = (user as any).image
+      }
+      return session
+    },
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
     }
   },
   pages: {

@@ -30,15 +30,23 @@ export default function SignInPage() {
 
       if (result?.error) {
         setError('Invalid email or password')
-      } else {
-        const session = await getSession()
-        if (session?.user?.role === 'ADMIN') {
-          router.push('/admin/dashboard')
-        } else if (session?.user?.role === 'INSTRUCTOR') {
-          router.push('/instructor/dashboard')
-        } else {
+      } else if (result?.ok) {
+        // Wait a moment for session to be updated
+        setTimeout(async () => {
+          const session = await getSession()
+          if (session?.user?.role === 'ADMIN') {
+            router.push('/admin/dashboard')
+          } else if (session?.user?.role === 'INSTRUCTOR') {
+            router.push('/instructor/dashboard')
+          } else {
+            router.push('/dashboard')
+          }
+        }, 100)
+        
+        // Fallback redirect after 1 second
+        setTimeout(() => {
           router.push('/dashboard')
-        }
+        }, 1000)
       }
     } catch (error) {
       setError('An error occurred. Please try again.')
