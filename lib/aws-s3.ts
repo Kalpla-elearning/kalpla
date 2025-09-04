@@ -44,7 +44,8 @@ export async function uploadFileToS3(
 export async function uploadVideoToS3(
   file: Buffer,
   fileName: string,
-  folder: string = 'videos'
+  folder: string = 'videos',
+  contentType?: string
 ): Promise<string> {
   try {
     const key = `${folder}/${Date.now()}-${fileName}`
@@ -53,7 +54,7 @@ export async function uploadVideoToS3(
       Bucket: bucketName,
       Key: key,
       Body: file,
-      ContentType: 'video/mp4',
+      ContentType: contentType || 'video/mp4',
       ACL: 'private',
       Metadata: {
         'uploaded-by': 'kalpla-platform',
@@ -185,11 +186,12 @@ export function getKeyFromS3Url(url: string): string {
 }
 
 // Generate unique filename
-export function generateUniqueFileName(originalName: string): string {
+export function generateUniqueFileName(originalName: string, userId?: string): string {
   const timestamp = Date.now()
   const randomString = Math.random().toString(36).substring(2, 15)
   const extension = originalName.split('.').pop()
-  return `${timestamp}-${randomString}.${extension}`
+  const userPrefix = userId ? `${userId}-` : ''
+  return `${userPrefix}${timestamp}-${randomString}.${extension}`
 }
 
 // Get file type from filename
@@ -247,7 +249,7 @@ export function validateFileSize(fileSize: number, maxSize: number = 100 * 1024 
 }
 
 // Validate file (combines size and type validation)
-export function validateFile(file: File, allowedTypes: string[] = [], maxSize: number = 100 * 1024 * 1024): { isValid: boolean; error?: string } {
+export function validateFile(file: File | Express.Multer.File, allowedTypes: string[] = [], maxSize: number = 100 * 1024 * 1024): { isValid: boolean; error?: string } {
   if (!validateFileSize(file.size, maxSize)) {
     return { isValid: false, error: `File size exceeds ${maxSize / (1024 * 1024)}MB limit` }
   }
@@ -263,7 +265,8 @@ export function validateFile(file: File, allowedTypes: string[] = [], maxSize: n
 export async function uploadImageToS3(
   file: Buffer,
   fileName: string,
-  folder: string = 'images'
+  folder: string = 'images',
+  contentType?: string
 ): Promise<string> {
   try {
     const key = `${folder}/${Date.now()}-${fileName}`
@@ -272,7 +275,7 @@ export async function uploadImageToS3(
       Bucket: bucketName,
       Key: key,
       Body: file,
-      ContentType: getFileType(fileName),
+      ContentType: contentType || getFileType(fileName),
       ACL: 'public-read', // Images are typically public
       Metadata: {
         'uploaded-by': 'kalpla-platform',

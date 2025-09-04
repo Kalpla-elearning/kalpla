@@ -82,6 +82,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         session.user.id = user.id
         session.user.role = (user as any).role || 'STUDENT'
+        session.user.image = (user as any).image
       }
       return session
     },

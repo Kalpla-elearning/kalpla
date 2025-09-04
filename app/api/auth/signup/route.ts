@@ -81,11 +81,7 @@ export async function POST(request: NextRequest) {
       </div>
     `
 
-    await sendEmail({
-      to: email,
-      subject: 'Verify Your Email - Kalpla',
-      html: emailContent,
-    })
+    await sendEmail(email, 'Verify Your Email - Kalpla', emailContent)
 
     return NextResponse.json(
       { 

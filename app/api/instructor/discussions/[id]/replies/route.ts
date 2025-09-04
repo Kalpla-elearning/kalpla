@@ -44,10 +44,10 @@ export async function POST(
       data: {
         content: validatedData.content,
         discussionId: params.id,
-        userId: session.user.id
+        authorId: session.user.id
       },
       include: {
-        user: {
+        author: {
           select: {
             id: true,
             name: true,

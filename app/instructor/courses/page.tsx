@@ -16,7 +16,8 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   CurrencyRupeeIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 
 interface InstructorCourse {

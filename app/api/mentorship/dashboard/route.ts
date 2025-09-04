@@ -25,11 +25,7 @@ export async function GET(request: NextRequest) {
         program: true,
         progressRecords: {
           include: {
-            lesson: {
-              include: {
-                phase: true
-              }
-            }
+            lesson: true
           }
         }
       }
@@ -43,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all phases with lessons
-    const phases = await prisma.phase.findMany({
+    const phases = await prisma.mentorshipPhase.findMany({
       where: {
         programId: enrollment.programId
       },

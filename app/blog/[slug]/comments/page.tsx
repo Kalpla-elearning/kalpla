@@ -10,10 +10,10 @@ import {
   ChatBubbleLeftIcon,
   UserIcon,
   CalendarIcon,
-  HandThumbUpIcon,
-  HandThumbDownIcon,
+  HandThumbUpIcon as ThumbsUpIcon,
+  HandThumbDownIcon as ThumbsDownIcon,
   FlagIcon,
-  ArrowUturnLeftIcon,
+  ArrowUturnLeftIcon as ReplyIcon,
   PaperAirplaneIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon

@@ -63,11 +63,7 @@ export async function POST(request: NextRequest) {
       </div>
     `
 
-    await sendEmail({
-      to: email,
-      subject: 'Reset Your Password - Kalpla',
-      html: emailContent,
-    })
+    await sendEmail(email, 'Reset Your Password - Kalpla', emailContent)
 
     return NextResponse.json(
       { message: 'If an account with that email exists, a password reset link has been sent.' },

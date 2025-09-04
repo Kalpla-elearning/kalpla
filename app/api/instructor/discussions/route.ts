@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         },
         replies: {
           include: {
-            user: {
+            author: {
               select: {
                 id: true,
                 name: true,

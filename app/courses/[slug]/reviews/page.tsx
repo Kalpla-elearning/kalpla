@@ -9,8 +9,8 @@ import {
   ChatBubbleLeftRightIcon,
   UserIcon,
   CalendarIcon,
-  HandThumbUpIcon,
-  HandThumbDownIcon,
+  HandThumbUpIcon as ThumbsUpIcon,
+  HandThumbDownIcon as ThumbsDownIcon,
   FlagIcon
 } from '@heroicons/react/24/outline'
 

@@ -14,6 +14,8 @@ interface PaymentOptions {
   billingAddress?: any
   shippingAddress?: any
   notes?: string
+  programId?: string
+  programTitle?: string
 }
 
 interface PaymentResult {

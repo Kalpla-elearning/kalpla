@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if lesson exists and belongs to the user's program
-    const lesson = await prisma.lesson.findFirst({
+    const lesson = await prisma.mentorshipLesson.findFirst({
       where: {
         id: lessonId,
         phase: {

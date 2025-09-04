@@ -28,6 +28,7 @@ export interface PaymentData {
   paymentMethod?: string
   description?: string
   metadata?: any
+  userId: string
 }
 
 export class PaymentService {

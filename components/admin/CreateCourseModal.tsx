@@ -139,10 +139,10 @@ export default function CreateCourseModal({ onClose, onSuccess }: CreateCourseMo
   }
 
   const handleFileUpload = async (file: File, type: 'thumbnail' | 'video') => {
+    const isThumbnail = type === 'thumbnail'
+    const isVideo = type === 'video'
+    
     try {
-      const isThumbnail = type === 'thumbnail'
-      const isVideo = type === 'video'
-      
       if (isThumbnail) setUploadingThumbnail(true)
       if (isVideo) setUploadingVideo(true)
 

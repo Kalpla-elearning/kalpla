@@ -144,10 +144,10 @@ export default function CreateDegreeProgramModal({ onClose, onSuccess }: CreateD
   }
 
   const handleFileUpload = async (file: File, type: 'image' | 'brochure') => {
+    const isImage = type === 'image'
+    const isBrochure = type === 'brochure'
+    
     try {
-      const isImage = type === 'image'
-      const isBrochure = type === 'brochure'
-      
       if (isImage) setUploadingImage(true)
       if (isBrochure) setUploadingBrochure(true)
 

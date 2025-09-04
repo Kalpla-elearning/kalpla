@@ -625,9 +625,9 @@ export default function CurriculumPage() {
                     )}
 
                     {/* Edit Lesson Form */}
-                    {editingLesson === lesson.id && (
+                    {editingLesson && module.lessons.find(l => l.id === editingLesson) && (
                       <div className="bg-yellow-50 rounded-lg p-4">
-                        <form onSubmit={(e) => { e.preventDefault(); handleUpdateLesson(module.id, lesson.id) }}>
+                        <form onSubmit={(e) => { e.preventDefault(); handleUpdateLesson(module.id, editingLesson) }}>
                           <div className="grid grid-cols-1 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">

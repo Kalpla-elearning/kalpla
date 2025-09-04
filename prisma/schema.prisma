@@ -22,6 +22,7 @@ model User {
   college                String?
   yearOfStudy            String?
   isVerified             Boolean                @default(false)
+  isActive               Boolean                @default(true)
   emailVerified          DateTime?
   verificationCode       String?
   verificationCodeExpiry DateTime?
@@ -49,7 +50,7 @@ model User {
   accounts               Account[]
   sessions               Session[]
   discussions            Discussion[]
-  replies                Reply[]
+  replies                Reply[]              @relation("ReplyAuthor")
   mentorshipProgress     MentorshipProgress[]
 
   @@map("users")
@@ -61,11 +62,14 @@ model Course {
   description          String
   slug                 String?             @unique
   thumbnail            String?
+  thumbnailUrl         String?
   videoUrl             String?
   price                Float
   category             String?
   subcategory          String?
   tags                 String?
+  requirements         String?
+  learningOutcomes     String?
   instructorId         String
   status               String              @default("DRAFT")
   level                String?
@@ -333,7 +337,7 @@ model MentorshipEnrollment {
   program       MentorshipProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessions      MentorshipSession[]
-
+  progressRecords MentorshipProgress[]
 
   @@unique([userId, programId])
   @@map("mentorship_enrollments")
@@ -370,18 +374,20 @@ model MentorshipLesson {
 }
 
 model MentorshipProgress {
-  id        String                @id @default(cuid())
-  userId    String
-  lessonId  String
-  status    String                @default("NOT_STARTED")
-  completedAt DateTime?
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
-  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson    MentorshipLesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  id            String                @id @default(cuid())
+  userId        String
+  lessonId      String
+  enrollmentId  String
+  status        String                @default("NOT_STARTED")
+  watchTime     Int?
+  completedAt   DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson        MentorshipLesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  enrollment    MentorshipEnrollment  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
-
-  @@unique([userId, lessonId])
+  @@unique([enrollmentId, lessonId])
   @@map("mentorship_progress")
 }
 
@@ -391,6 +397,8 @@ model Discussion {
   content   String
   courseId  String
   authorId  String
+  status    String    @default("OPEN")
+  priority  String    @default("LOW")
   isResolved Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -409,7 +417,7 @@ model Reply {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
-  author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author       User       @relation("ReplyAuthor", fields: [authorId], references: [id], onDelete: Cascade)
 
   @@map("replies")
 }
@@ -417,9 +425,12 @@ model Reply {
 model Lesson {
   id          String    @id @default(cuid())
   title       String
+  description String?
   content     String?
   type        String
   url         String?
+  videoUrl    String?
+  documentUrl String?
   duration    Int?
   order       Int
   moduleId    String
@@ -599,6 +610,9 @@ model Post {
   featuredImage String?
   status        String         @default("DRAFT")
   visibility    String         @default("PUBLIC")
+  password      String?
+  metaTitle     String?
+  scheduledAt   DateTime?
   publishedAt   DateTime?
   authorId      String
   isFlagged     Boolean        @default(false)
@@ -619,6 +633,7 @@ model Category {
   slug        String         @unique
   description String?
   color       String?
+  parentId    String?
   status      String         @default("ACTIVE")
   publishedAt DateTime?
   createdAt   DateTime       @default(now())
@@ -644,6 +659,8 @@ model Tag {
 model PostCategory {
   postId     String
   categoryId String
+  status     String   @default("PUBLISHED")
+  publishedAt DateTime?
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
