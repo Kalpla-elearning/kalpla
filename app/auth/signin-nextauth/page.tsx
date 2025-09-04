@@ -1,16 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 
-// Dynamic imports to handle both NextAuth and Amplify
-let signIn: any = null
-let getSession: any = null
-let isAmplifyMode = false
-
-export default function SignInPage() {
+export default function SignInNextAuthPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -18,36 +14,9 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [authMode, setAuthMode] = useState<'nextauth' | 'amplify' | 'loading'>('loading')
   const router = useRouter()
 
-  // Initialize authentication mode
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        // Try to import NextAuth first
-        const nextAuth = await import('next-auth/react')
-        signIn = nextAuth.signIn
-        getSession = nextAuth.getSession
-        setAuthMode('nextauth')
-      } catch (error) {
-        try {
-          // Try to import Amplify auth
-          const amplifyAuth = await import('aws-amplify/auth')
-          signIn = amplifyAuth.signIn
-          getCurrentUser = amplifyAuth.getCurrentUser
-          setAuthMode('amplify')
-        } catch (amplifyError) {
-          console.error('No authentication system available:', amplifyError)
-          setError('Authentication system not available. Please check your configuration.')
-        }
-      }
-    }
-
-    initializeAuth()
-  }, [])
-
-  const handleNextAuthSignIn = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
@@ -87,91 +56,20 @@ export default function SignInPage() {
     }
   }
 
-  const handleAmplifySignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-
-    try {
-      const { isSignedIn } = await signIn({ 
-        username: formData.email, 
-        password: formData.password 
-      })
-      
-      if (isSignedIn) {
-        // Get user data to determine role-based redirect
-        const user = await getCurrentUser()
-        const userRole = user.signInDetails?.loginId?.includes('admin') ? 'ADMIN' : 
-                        user.signInDetails?.loginId?.includes('instructor') ? 'INSTRUCTOR' : 'STUDENT'
-        
-        // Redirect based on role
-        if (userRole === 'ADMIN') {
-          router.push('/admin/dashboard')
-        } else if (userRole === 'INSTRUCTOR') {
-          router.push('/instructor/dashboard')
-        } else {
-          router.push('/dashboard')
-        }
-      }
-    } catch (error: any) {
-      console.error('Sign in error:', error)
-      setError(error.message || 'Invalid email or password')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    if (authMode === 'nextauth') {
-      await handleNextAuthSignIn(e)
-    } else if (authMode === 'amplify') {
-      await handleAmplifySignIn(e)
-    }
-  }
-
   const handleGoogleSignIn = async () => {
-    if (authMode === 'nextauth') {
-      try {
-        await signIn('google', { callbackUrl: '/dashboard' })
-      } catch (error: any) {
-        setError(error.message || 'Failed to sign in with Google')
-      }
-    } else if (authMode === 'amplify') {
-      try {
-        await signIn({ provider: 'Google' })
-        router.push('/dashboard')
-      } catch (error: any) {
-        setError(error.message || 'Failed to sign in with Google')
-      }
+    try {
+      await signIn('google', { callbackUrl: '/dashboard' })
+    } catch (error: any) {
+      setError(error.message || 'Failed to sign in with Google')
     }
   }
 
   const handleGitHubSignIn = async () => {
-    if (authMode === 'nextauth') {
-      try {
-        await signIn('github', { callbackUrl: '/dashboard' })
-      } catch (error: any) {
-        setError(error.message || 'Failed to sign in with GitHub')
-      }
-    } else if (authMode === 'amplify') {
-      try {
-        await signIn({ provider: 'GitHub' })
-        router.push('/dashboard')
-      } catch (error: any) {
-        setError(error.message || 'Failed to sign in with GitHub')
-      }
+    try {
+      await signIn('github', { callbackUrl: '/dashboard' })
+    } catch (error: any) {
+      setError(error.message || 'Failed to sign in with GitHub')
     }
-  }
-
-  if (authMode === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading authentication...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -179,7 +77,7 @@ export default function SignInPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            Sign in with NextAuth
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
@@ -190,11 +88,9 @@ export default function SignInPage() {
               create a new account
             </Link>
           </p>
-          {authMode === 'amplify' && (
-            <p className="mt-2 text-center text-xs text-blue-600">
-              Using AWS Amplify Authentication
-            </p>
-          )}
+          <p className="mt-2 text-center text-xs text-green-600">
+            Using NextAuth.js Authentication
+          </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -341,13 +237,14 @@ export default function SignInPage() {
 
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            Having trouble? Try the{' '}
+            Try{' '}
             <Link
-              href={authMode === 'amplify' ? '/auth/signin-nextauth' : '/auth/signin-amplify'}
+              href="/auth/signin-amplify"
               className="text-primary-600 hover:text-primary-500"
             >
-              {authMode === 'amplify' ? 'NextAuth' : 'Amplify'} version
+              Amplify version
             </Link>
+            {' '}if you're having issues
           </p>
         </div>
       </div>
