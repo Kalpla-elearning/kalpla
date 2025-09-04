@@ -168,11 +168,11 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ## 🚀 Deployment
 
-### Vercel Deployment
+### AWS Amplify Deployment
 
 1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add environment variables in Vercel dashboard
+2. Connect your repository to AWS Amplify
+3. Configure environment variables in Amplify console
 4. Deploy
 
 ### Self-Hosted Deployment

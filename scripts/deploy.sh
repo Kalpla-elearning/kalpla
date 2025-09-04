@@ -41,14 +41,11 @@ npm run db:generate
 
 echo "✅ Build completed successfully!"
 
-# Check if Vercel CLI is installed
-if command -v vercel &> /dev/null; then
-    echo "🚀 Deploying to Vercel..."
-    vercel --prod
-else
-    echo "📝 Vercel CLI not found. Please install it with: npm i -g vercel"
-    echo "Or deploy manually through the Vercel dashboard."
-fi
+# Deployment options
+echo "🚀 Deployment options:"
+echo "1. AWS Amplify: Connect your GitHub repository to AWS Amplify"
+echo "2. AWS EC2: Use the provided Docker configuration"
+echo "3. Other platforms: Deploy using standard Next.js build process"
 
 echo "🎉 Deployment process completed!"
 echo "📋 Next steps:"

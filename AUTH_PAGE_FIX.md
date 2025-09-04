@@ -88,12 +88,12 @@ http://localhost:3000/auth/signin-amplify
 
 ### **For Production:**
 - **AWS Amplify**: Uses Amplify authentication
-- **Vercel/Other**: Uses NextAuth.js authentication
+- **Other Platforms**: Uses NextAuth.js authentication
 - **Both**: Auto-detects and uses appropriate system
 
 ## 🛠️ **Configuration:**
 
-### **NextAuth.js (for Vercel/other deployments):**
+### **NextAuth.js (for other deployments):**
 - Uses existing `lib/auth.ts` configuration
 - Works with current database setup
 - OAuth providers configured
