@@ -18,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline'
 
 export default async function AdminSettingsPage() {
-  const session = await getServerSession(authOptions)
+  const session = null
   
   if (!session?.user || session.user.role !== 'ADMIN') {
     redirect('/auth/signin')

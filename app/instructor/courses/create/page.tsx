@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   PlusIcon, XMarkIcon, PhotoIcon, VideoCameraIcon, DocumentTextIcon,
   ClockIcon, CurrencyDollarIcon, TagIcon, AcademicCapIcon, CheckCircleIcon,
-  ArrowRightIcon, ArrowLeftIcon, EyeIcon, SaveIcon, PlayIcon
+  ArrowRightIcon, ArrowLeftIcon, EyeIcon, CheckIcon, PlayIcon
 } from '@heroicons/react/24/outline'
 
 // Course Creation Steps
@@ -911,7 +911,7 @@ export default function CreateCoursePage() {
                 disabled={isLoading}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
-                <SaveIcon className="h-4 w-4 mr-2" />
+                <CheckIcon className="h-4 w-4 mr-2" />
                 Save Draft
               </button>
               {currentStep === 'publish' && (

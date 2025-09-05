@@ -44,7 +44,7 @@ interface MentorshipProgram {
   }
 }
 
-async function getMentorshipPrograms() {
+function getMentorshipPrograms() {
   // Mock data for now until we add real programs
   return [
     {
@@ -131,9 +131,8 @@ async function getMentorshipPrograms() {
   ]
 }
 
-export default async function MentorshipPage() {
-  const session = await getServerSession(authOptions)
-  const programs = await getMentorshipPrograms()
+export default function MentorshipPage() {
+  const programs = getMentorshipPrograms()
 
   const categories = [
     { name: 'Technology', icon: AcademicCapIcon, color: 'bg-blue-500' },

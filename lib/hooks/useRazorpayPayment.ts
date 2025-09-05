@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/lib/hooks/useAuth'
 
 interface PaymentOptions {
   type: 'COURSE' | 'DEGREE_PROGRAM' | 'MENTORSHIP' | 'SUBSCRIPTION'

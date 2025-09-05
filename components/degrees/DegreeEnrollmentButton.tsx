@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession } from '@/lib/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { CurrencyDollarIcon } from '@heroicons/react/24/outline'
 

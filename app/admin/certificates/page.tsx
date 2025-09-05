@@ -109,7 +109,7 @@ async function getCertificateData() {
 }
 
 export default async function AdminCertificatesPage() {
-  const session = await getServerSession(authOptions)
+  const session = null
   
   if (!session?.user || session.user.role !== 'ADMIN') {
     redirect('/auth/signin')

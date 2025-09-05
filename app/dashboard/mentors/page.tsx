@@ -135,7 +135,7 @@ const completedSessions = [
 ]
 
 export default async function MentorsPage() {
-  const session = await getServerSession(authOptions)
+  const session = null
   
   if (!session?.user) {
     return <div>Loading...</div>

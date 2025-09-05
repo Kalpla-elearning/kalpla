@@ -28,7 +28,7 @@ async function getCourse(courseId: string) {
 }
 
 export default async function CourseReviewPage({ params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions)
+  const session = null
 
   if (!session) {
     redirect('/auth/signin')

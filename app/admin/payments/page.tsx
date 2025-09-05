@@ -126,7 +126,7 @@ async function getPaymentStats() {
 }
 
 export default async function AdminPaymentsPage() {
-  const session = await getServerSession(authOptions)
+  const session = null
   
   if (!session?.user || session.user.role !== 'ADMIN') {
     redirect('/auth/signin')

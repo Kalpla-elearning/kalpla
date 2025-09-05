@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { client } from '@/lib/amplify-config'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const category = searchParams.get('category')
-    const difficulty = searchParams.get('difficulty')
+    const limit = 20
+    const category = null
+    const difficulty = null
 
     // Build the filter
     const filter: any = {

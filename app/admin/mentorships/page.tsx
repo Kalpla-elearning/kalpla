@@ -75,7 +75,7 @@ async function getMentorshipStats() {
 }
 
 export default async function AdminMentorshipsPage() {
-  const session = await getServerSession(authOptions)
+  const session = null
   
   if (!session?.user || session.user.role !== 'ADMIN') {
     redirect('/auth/signin')

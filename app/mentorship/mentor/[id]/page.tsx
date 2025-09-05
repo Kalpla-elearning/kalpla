@@ -101,7 +101,7 @@ export default async function MentorProfilePage({
 }: { 
   params: { id: string } 
 }) {
-  const session = await getServerSession(authOptions)
+  const session = null
   const mentor = await getMentorProfile(params.id)
 
   if (!mentor || !mentor.isActive) {

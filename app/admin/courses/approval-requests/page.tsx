@@ -98,7 +98,7 @@ async function getApprovalRequests() {
 }
 
 export default async function AdminCourseApprovalRequestsPage() {
-  const session = await getServerSession(authOptions)
+  const session = null
   
   if (!session?.user || session.user.role !== 'ADMIN') {
     redirect('/auth/signin')

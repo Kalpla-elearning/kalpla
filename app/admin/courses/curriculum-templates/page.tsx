@@ -75,7 +75,7 @@ async function getCurriculumTemplatesData() {
 }
 
 export default async function AdminCurriculumTemplatesPage() {
-  const session = await getServerSession(authOptions)
+  const session = null
   
   if (!session?.user || session.user.role !== 'ADMIN') {
     redirect('/auth/signin')

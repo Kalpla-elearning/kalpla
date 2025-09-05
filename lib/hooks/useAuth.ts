@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useAuth as useAmplifyAuth } from '@/components/providers/AuthProvider'
 
 interface User {
   id: string
@@ -10,6 +10,10 @@ interface User {
   role?: string
 }
 
+interface Session {
+  user: User
+}
+
 interface AuthState {
   user: User | null
   loading: boolean
@@ -17,39 +21,53 @@ interface AuthState {
   signOut: () => Promise<void>
 }
 
+// Amplify Auth hook
 export function useAuth(): AuthState {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    // Mock auth state for build time
-    setUser(null)
-    setLoading(false)
-  }, [])
-
-  const signIn = async (email: string, password: string) => {
-    // Mock sign in
-    console.log('Sign in:', email)
-  }
-
-  const signOut = async () => {
-    // Mock sign out
-    setUser(null)
-  }
-
+  const amplifyAuth = useAmplifyAuth()
+  
   return {
-    user,
-    loading,
-    signIn,
-    signOut
+    user: amplifyAuth.user ? {
+      id: amplifyAuth.user.id,
+      name: amplifyAuth.user.name || '',
+      email: amplifyAuth.user.email,
+      role: amplifyAuth.user.role?.toLowerCase()
+    } : null,
+    loading: amplifyAuth.loading,
+    signIn: async (email: string, password: string) => {
+      const result = await amplifyAuth.signIn(email, password)
+      if (!result.success) {
+        throw new Error(result.error || 'Sign in failed')
+      }
+    },
+    signOut: async () => {
+      const result = await amplifyAuth.signOut()
+      if (!result.success) {
+        throw new Error(result.error || 'Sign out failed')
+      }
+    }
   }
 }
 
-// Mock useSession for compatibility
+// NextAuth-compatible useSession hook
 export function useSession() {
   const auth = useAuth()
+  
   return {
     data: auth.user ? { user: auth.user } : null,
     status: auth.loading ? 'loading' : auth.user ? 'authenticated' : 'unauthenticated'
   }
+}
+
+// NextAuth-compatible signIn function
+export async function signIn(provider: string, options?: any) {
+  if (provider === 'credentials' && options?.email && options?.password) {
+    const auth = useAuth()
+    await auth.signIn(options.email, options.password)
+  }
+}
+
+// NextAuth-compatible getSession function
+export async function getSession() {
+  const auth = useAuth()
+  return auth.user ? { user: auth.user } : null
 }
