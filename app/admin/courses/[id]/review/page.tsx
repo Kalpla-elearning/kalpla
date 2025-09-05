@@ -14,49 +14,16 @@ import {
 } from '@heroicons/react/24/outline'
 
 async function getCourse(courseId: string) {
-  const { PrismaClient } = require('@prisma/client')
-  const prisma = new PrismaClient()
-
   try {
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      include: {
-        instructor: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-          },
-        },
-        modules: {
-          include: {
-            contents: {
-              orderBy: {
-                order: 'asc',
-              },
-            },
-          },
-          orderBy: {
-            order: 'asc',
-          },
-        },
-        _count: {
-          select: {
-            modules: true,
-            enrollments: true,
-            reviews: true,
-          },
-        },
-      },
-    })
-
-    return course
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/courses/${courseId}`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch course')
+    }
+    const data = await response.json()
+    return data.course
   } catch (error) {
     console.error('Error fetching course:', error)
     return null
-  } finally {
-    await prisma.$disconnect()
   }
 }
 

@@ -5,8 +5,8 @@ frontend:
       commands:
         - echo "Installing dependencies..."
         - npm ci
-        - echo "Running Prisma generate..."
-        - npx prisma generate
+        - echo "Setting up Amplify..."
+        - npx ampx sandbox --once
     build:
       commands:
         - echo "Building the app..."

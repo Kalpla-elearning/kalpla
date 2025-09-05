@@ -71,15 +71,18 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-          // AWS Amplify specific configuration
-        env: {
-          NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID || '',
-          NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_WEB_CLIENT_ID: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_WEB_CLIENT_ID || '',
-          NEXT_PUBLIC_AMPLIFY_AUTH_IDENTITY_POOL_ID: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_IDENTITY_POOL_ID || '',
-          NEXT_PUBLIC_AMPLIFY_REGION: process.env.NEXT_PUBLIC_AMPLIFY_REGION || 'us-east-1',
-          NEXT_PUBLIC_AMPLIFY_API_URL: process.env.NEXT_PUBLIC_AMPLIFY_API_URL || '',
-          NEXT_PUBLIC_AMPLIFY_STORAGE_BUCKET_NAME: process.env.NEXT_PUBLIC_AMPLIFY_STORAGE_BUCKET_NAME || '',
-        },
+  experimental: {
+    // Remove appDir as it's now stable in Next.js 14
+  },
+  // AWS Amplify specific configuration
+  env: {
+    NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID || '',
+    NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_WEB_CLIENT_ID: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_WEB_CLIENT_ID || '',
+    NEXT_PUBLIC_AMPLIFY_AUTH_IDENTITY_POOL_ID: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_IDENTITY_POOL_ID || '',
+    NEXT_PUBLIC_AMPLIFY_REGION: process.env.NEXT_PUBLIC_AMPLIFY_REGION || 'us-east-1',
+    NEXT_PUBLIC_AMPLIFY_API_URL: process.env.NEXT_PUBLIC_AMPLIFY_API_URL || '',
+    NEXT_PUBLIC_AMPLIFY_STORAGE_BUCKET_NAME: process.env.NEXT_PUBLIC_AMPLIFY_STORAGE_BUCKET_NAME || '',
+  },
 }
 
 module.exports = nextConfig
