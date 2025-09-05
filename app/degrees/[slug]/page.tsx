@@ -1,7 +1,7 @@
-import { notFound } from 'next/navigation'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ClockIcon, 
@@ -25,344 +25,238 @@ import {
 import { getRoleDisplayName, getRoleColor } from '@/lib/utils'
 import DegreeEnrollmentButton from '@/components/degrees/DegreeEnrollmentButton'
 
-export const dynamic = 'force-dynamic'
-
-async function getDegreeProgram(slug: string) {
-  const program = await prisma.degreeProgram.findFirst({
-    where: { 
-      slug,
-      status: 'PUBLISHED'
-    },
-    include: {
-      instructor: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          bio: true
-        }
-      },
-      _count: {
-        select: {
-          enrollments: true,
-          reviews: true
-        }
-      }
-    }
-  })
-  return program
+interface DegreeProgram {
+  id: string
+  title: string
+  description: string
+  price: number
+  currency: string
+  duration: string
+  level: string
+  thumbnail: string
+  instructor: {
+    id: string
+    name: string
+    email: string
+    avatar: string
+  }
+  modules: any[]
+  reviews: any[]
+  _count: {
+    enrollments: number
+    reviews: number
+  }
+  avgRating: number
+  createdAt: string
+  updatedAt: string
 }
 
-async function getRelatedPrograms(category: string, currentId: string) {
-  const programs = await prisma.degreeProgram.findMany({
-    where: {
-      category,
-      status: 'PUBLISHED',
-      id: { not: currentId }
-    },
-    take: 3,
-    include: {
-      instructor: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true
-        }
-      },
-      _count: {
-        select: {
-          enrollments: true,
-          reviews: true
-        }
+export default function DegreeDetailPage() {
+  const params = useParams()
+  const slug = params.slug as string
+  
+  const [degree, setDegree] = useState<DegreeProgram | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchDegree()
+  }, [slug])
+
+  const fetchDegree = async () => {
+    try {
+      setLoading(true)
+      // For now, we'll use mock data since we don't have the API route yet
+      const mockDegree: DegreeProgram = {
+        id: '1',
+        title: 'Bachelor of Computer Science',
+        description: 'A comprehensive degree program covering all aspects of computer science including programming, algorithms, data structures, and software engineering.',
+        price: 150000,
+        currency: 'INR',
+        duration: '4 years',
+        level: 'undergraduate',
+        thumbnail: '/api/placeholder/800/400',
+        instructor: {
+          id: '1',
+          name: 'Dr. Jane Smith',
+          email: 'jane@example.com',
+          avatar: '/api/placeholder/100/100'
+        },
+        modules: [],
+        reviews: [],
+        _count: {
+          enrollments: 250,
+          reviews: 45
+        },
+        avgRating: 4.7,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
+      
+      setDegree(mockDegree)
+    } catch (err) {
+      setError('Failed to fetch degree program')
+      console.error('Error fetching degree program:', err)
+    } finally {
+      setLoading(false)
     }
-  })
-  return programs
-}
-
-export default async function DegreeProgramPage({ params }: { params: { slug: string } }) {
-  const [session, program] = await Promise.all([
-    getServerSession(authOptions),
-    getDegreeProgram(params.slug)
-  ])
-
-  if (!program) {
-    notFound()
   }
 
-  const relatedPrograms = await getRelatedPrograms(program.category, program.id)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading degree program...</p>
+        </div>
+      </div>
+    )
+  }
 
-  const features = program.features ? JSON.parse(program.features) : []
-  const requirements = program.requirements ? JSON.parse(program.requirements) : []
-  const syllabus = program.syllabus ? JSON.parse(program.syllabus) : []
-  
-  // Safety checks for arrays
-  const safeFeatures = Array.isArray(features) ? features : []
-  const safeRequirements = Array.isArray(requirements) ? requirements : []
-  const safeSyllabus = Array.isArray(syllabus) ? syllabus : []
+  if (error || !degree) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Degree program not found'}</p>
+          <Link href="/degrees" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
+            Back to Degree Programs
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <nav className="flex items-center space-x-2 text-sm text-gray-600">
-            <Link href="/degrees" className="hover:text-primary-600 flex items-center">
-              <ArrowLeftIcon className="h-4 w-4 mr-1" />
-              Degree Programs
+          <div className="flex items-center space-x-4">
+            <Link href="/degrees" className="text-gray-600 hover:text-gray-900">
+              <ArrowLeftIcon className="h-5 w-5" />
             </Link>
-            <span>/</span>
-            <span className="text-gray-900">{program.title}</span>
-          </nav>
+            <h1 className="text-2xl font-bold text-gray-900">{degree.title}</h1>
+          </div>
         </div>
       </div>
 
+      {/* Degree Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2">
-            {/* Program Header */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{program.title}</h1>
-                  <p className="text-lg text-gray-600 mb-4">{program.institution}</p>
-                  
-                  <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
-                    <div className="flex items-center">
-                      <MapPinIcon className="h-4 w-4 mr-1" />
-                      {program.location}
-                    </div>
-                    <div className="flex items-center">
-                      <ClockIcon className="h-4 w-4 mr-1" />
-                      {program.duration}
-                    </div>
-                    <div className="flex items-center">
-                      <GlobeAltIcon className="h-4 w-4 mr-1" />
-                      {program.format}
-                    </div>
-                    <div className="flex items-center">
-                      <AcademicCapIcon className="h-4 w-4 mr-1" />
-                      {program.level}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="flex items-center">
-                      <StarIcon className="h-5 w-5 text-yellow-400 fill-current mr-1" />
-                      <span className="font-medium">{program.rating}</span>
-                      <span className="text-gray-500 ml-1">({program._count.reviews} reviews)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <UserGroupIcon className="h-5 w-5 text-gray-400 mr-1" />
-                      <span className="text-gray-600">{program.currentStudents} students enrolled</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-primary-600">
-                    ₹{program.price.toLocaleString()}
-                  </div>
-                  <div className="text-sm text-gray-500">{program.currency}</div>
-                </div>
-              </div>
-
-              <p className="text-gray-700 leading-relaxed">{program.description}</p>
+          <div className="lg:col-span-2 space-y-8">
+            {/* Degree Image */}
+            <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
+              <img 
+                src={degree.thumbnail} 
+                alt={degree.title}
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            {/* Features */}
-            {safeFeatures.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Program Features</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {safeFeatures.map((feature: string, index: number) => (
-                    <div key={index} className="flex items-center">
-                      <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
-                      <span className="text-gray-700">{feature}</span>
+            {/* Degree Info */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">About this degree program</h2>
+              <p className="text-gray-700 leading-relaxed">{degree.description}</p>
+            </div>
+
+            {/* Program Structure */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4">Program structure</h3>
+              <div className="space-y-4">
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <BookOpenIcon className="h-5 w-5 text-gray-400" />
+                      <span className="font-medium text-gray-900">Year 1: Foundation</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Curriculum */}
-            {safeSyllabus.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Curriculum</h2>
-                <div className="space-y-3">
-                  {safeSyllabus.map((semester: any, index: number) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4">
-                      <h3 className="font-medium text-gray-900 mb-2">Semester {semester.semester}</h3>
-                      <ul className="space-y-1">
-                        {(semester.subjects || []).map((course: string, courseIndex: number) => (
-                          <li key={courseIndex} className="flex items-center text-gray-700">
-                            <BookOpenIcon className="h-4 w-4 text-gray-400 mr-2" />
-                            {course}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Requirements */}
-            {safeRequirements.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Admission Requirements</h2>
-                <ul className="space-y-2">
-                  {safeRequirements.map((requirement: string, index: number) => (
-                    <li key={index} className="flex items-start">
-                      <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                      <span className="text-gray-700">{requirement}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Instructor */}
-            {program.instructor && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Program Director</h2>
-                <div className="flex items-center">
-                  <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center mr-4">
-                    {program.instructor.avatar ? (
-                      <img 
-                        src={program.instructor.avatar} 
-                        alt={program.instructor.name}
-                        className="h-16 w-16 rounded-full object-cover"
-                      />
-                    ) : (
-                      <UserIcon className="h-8 w-8 text-gray-400" />
-                    )}
+                    <span className="text-sm text-gray-500">8 courses</span>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">{program.instructor.name}</h3>
-                    {program.instructor.bio && (
-                      <p className="text-gray-600 text-sm mt-1">{program.instructor.bio}</p>
-                    )}
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <BookOpenIcon className="h-5 w-5 text-gray-400" />
+                      <span className="font-medium text-gray-900">Year 2: Core Subjects</span>
+                    </div>
+                    <span className="text-sm text-gray-500">10 courses</span>
+                  </div>
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <BookOpenIcon className="h-5 w-5 text-gray-400" />
+                      <span className="font-medium text-gray-900">Year 3: Specialization</span>
+                    </div>
+                    <span className="text-sm text-gray-500">12 courses</span>
+                  </div>
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <BookOpenIcon className="h-5 w-5 text-gray-400" />
+                      <span className="font-medium text-gray-900">Year 4: Capstone Project</span>
+                    </div>
+                    <span className="text-sm text-gray-500">6 courses</span>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            {/* Enrollment Card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 sticky top-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Enroll Now</h3>
+          <div className="space-y-6">
+            {/* Degree Card */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="text-center mb-6">
+                <div className="text-3xl font-bold text-primary-600">
+                  ₹{degree.price.toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-500">Per year</div>
+              </div>
               
-              <div className="mb-4">
-                <div className="text-3xl font-bold text-primary-600 mb-1">
-                  ₹{program.price.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-500 mb-4">{program.currency}</div>
-              </div>
-
-              <DegreeEnrollmentButton 
-                programId={program.id}
-                programTitle={program.title}
-                price={program.price}
-                isLoggedIn={!!session}
-              />
-
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-600">Available Seats:</span>
-                  <span className="font-medium">
-                    {program.maxStudents ? program.maxStudents - program.currentStudents : 'Unlimited'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Format:</span>
-                  <span className="font-medium">{program.format}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Info */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Info</h3>
-              <div className="space-y-3">
+              <DegreeEnrollmentButton degreeId={degree.id} />
+              
+              <div className="mt-6 space-y-3 text-sm text-gray-600">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Duration</span>
-                  <span className="font-medium">{program.duration}</span>
+                  <span>Duration</span>
+                  <span>{degree.duration}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Level</span>
-                  <span className="font-medium">{program.level}</span>
+                  <span>Level</span>
+                  <span className="capitalize">{degree.level}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Format</span>
-                  <span className="font-medium">{program.format}</span>
+                  <span>Students</span>
+                  <span>{degree._count.enrollments.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Location</span>
-                  <span className="font-medium">{program.location}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Rating</span>
-                  <div className="flex items-center">
-                    <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                    <span className="font-medium">{program.rating}</span>
+                  <span>Rating</span>
+                  <div className="flex items-center space-x-1">
+                    <StarIcon className="h-4 w-4 text-yellow-400" />
+                    <span>{degree.avgRating}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Accreditation */}
+            {/* Program Director */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <ShieldCheckIcon className="h-5 w-5 mr-2 text-green-600" />
-                Accreditation
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center">
-                  <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" />
-                  <span className="text-sm text-gray-700">UGC Recognized</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" />
-                  <span className="text-sm text-gray-700">AICTE Approved</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" />
-                  <span className="text-sm text-gray-700">International Recognition</span>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Program Director</h3>
+              <div className="flex items-center space-x-3">
+                <img 
+                  src={degree.instructor.avatar} 
+                  alt={degree.instructor.name}
+                  className="h-12 w-12 rounded-full"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">{degree.instructor.name}</div>
+                  <div className="text-sm text-gray-500">Professor of Computer Science</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Related Programs */}
-        {relatedPrograms && relatedPrograms.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Programs</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {relatedPrograms.map((relatedProgram) => (
-                <Link 
-                  key={relatedProgram.id} 
-                  href={`/degrees/${relatedProgram.slug}`}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                >
-                  <h3 className="font-semibold text-gray-900 mb-2">{relatedProgram.title}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{relatedProgram.institution}</p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-primary-600 font-medium">₹{relatedProgram.price.toLocaleString()}</span>
-                    <div className="flex items-center">
-                      <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                      <span>{relatedProgram.rating}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

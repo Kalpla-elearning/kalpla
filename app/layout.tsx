@@ -4,6 +4,11 @@ import './globals.css'
 import { Providers } from '@/components/providers/Providers'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { Amplify } from 'aws-amplify'
+import outputs from '../amplify_outputs.json'
+
+// Configure Amplify
+Amplify.configure(outputs)
 
 const inter = Inter({ subsets: ['latin'] })
 
