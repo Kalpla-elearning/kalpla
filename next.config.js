@@ -46,6 +46,8 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+    // Add fallback for build time
+    unoptimized: process.env.NODE_ENV === 'development',
   },
   async headers() {
     return [

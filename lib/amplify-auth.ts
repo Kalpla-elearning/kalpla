@@ -20,6 +20,11 @@ export interface AuthUser {
 export class AmplifyAuthService {
   static async getCurrentUser(): Promise<AuthUser | null> {
     try {
+      // Check if we're in a build environment or Amplify is not configured
+      if (typeof window === 'undefined' || !process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID) {
+        return null;
+      }
+      
       const user = await getCurrentUser();
       
       // Get user data from our database

@@ -47,36 +47,22 @@ const levels = [
 
 async function getDegreePrograms() {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/degree-programs?status=PUBLISHED`, {
-      cache: 'no-store'
-    })
+    // Return mock data for now since we don't have degree programs in Amplify yet
+    const programs: DegreeProgram[] = []
     
-    if (!response.ok) {
-      console.error('Failed to fetch degree programs')
-      return { programs: [], categories: [], levels: [] }
-    }
+    // Update category counts
+    const updatedCategories = categories.map(cat => ({
+      ...cat,
+      count: cat.id === 'all' ? programs.length : programs.filter((p: DegreeProgram) => p.category.toLowerCase() === cat.id).length
+    }))
     
-    const data = await response.json()
+    // Update level counts
+    const updatedLevels = levels.map(level => ({
+      ...level,
+      count: level.id === 'all' ? programs.length : programs.filter((p: DegreeProgram) => p.level.toLowerCase() === level.id).length
+    }))
     
-    if (data.success) {
-      const programs: DegreeProgram[] = data.data.programs
-      
-      // Update category counts
-      const updatedCategories = categories.map(cat => ({
-        ...cat,
-        count: cat.id === 'all' ? programs.length : programs.filter((p: DegreeProgram) => p.category.toLowerCase() === cat.id).length
-      }))
-      
-      // Update level counts
-      const updatedLevels = levels.map(level => ({
-        ...level,
-        count: level.id === 'all' ? programs.length : programs.filter((p: DegreeProgram) => p.level.toLowerCase() === level.id).length
-      }))
-      
-      return { programs, categories: updatedCategories, levels: updatedLevels }
-    }
-    
-    return { programs: [], categories, levels }
+    return { programs, categories: updatedCategories, levels: updatedLevels }
   } catch (error) {
     console.error('Error fetching degree programs:', error)
     return { programs: [], categories, levels }

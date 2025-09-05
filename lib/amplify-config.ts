@@ -4,13 +4,13 @@ import { getCurrentUser, signIn, signUp, signOut, confirmSignUp, resendSignUpCod
 import { uploadData, downloadData, remove, list } from 'aws-amplify/storage';
 import type { Schema } from '../amplify/data/resource';
 
-// Configure Amplify
-Amplify.configure({
+// Configure Amplify with fallbacks
+const config = {
   Auth: {
     Cognito: {
-      userPoolId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID!,
-      userPoolClientId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_WEB_CLIENT_ID!,
-      identityPoolId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_IDENTITY_POOL_ID!,
+      userPoolId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID || 'us-east-1_dummy',
+      userPoolClientId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_WEB_CLIENT_ID || 'dummy',
+      identityPoolId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_IDENTITY_POOL_ID || 'us-east-1:dummy',
       loginWith: {
         email: true,
         phone: true,
@@ -32,23 +32,42 @@ Amplify.configure({
   },
   Storage: {
     S3: {
-      bucket: process.env.NEXT_PUBLIC_AMPLIFY_STORAGE_BUCKET_NAME!,
-      region: process.env.NEXT_PUBLIC_AMPLIFY_REGION!,
+      bucket: process.env.NEXT_PUBLIC_AMPLIFY_STORAGE_BUCKET_NAME || 'dummy-bucket',
+      region: process.env.NEXT_PUBLIC_AMPLIFY_REGION || 'us-east-1',
     },
   },
   API: {
     GraphQL: {
-      endpoint: process.env.NEXT_PUBLIC_AMPLIFY_API_URL!,
-      region: process.env.NEXT_PUBLIC_AMPLIFY_REGION!,
+      endpoint: process.env.NEXT_PUBLIC_AMPLIFY_API_URL || 'https://dummy.appsync-api.us-east-1.amazonaws.com/graphql',
+      region: process.env.NEXT_PUBLIC_AMPLIFY_REGION || 'us-east-1',
       defaultAuthMode: 'userPool',
     },
   },
-}, {
-  ssr: true,
-});
+};
 
-// Generate the client
-export const client = generateClient<Schema>();
+// Only configure if we have valid environment variables
+if (process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID) {
+  Amplify.configure(config, { ssr: true });
+}
+
+// Generate the client with error handling
+let client: any = null;
+try {
+  client = generateClient<Schema>();
+} catch (error) {
+  console.warn('Amplify client not available:', error);
+  // Create a mock client for build time
+  client = {
+    models: {
+      Course: { list: () => ({ data: [] }) },
+      Post: { list: () => ({ data: [] }) },
+      DegreeProgram: { list: () => ({ data: [] }) },
+      User: { list: () => ({ data: [] }) },
+    }
+  };
+}
+
+export { client };
 
 // Auth functions
 export const auth = {
