@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { client } from '@/lib/amplify-config'
+import { getCurrentUser } from 'aws-amplify/auth'
 
 function slugify(input: string): string {
   return input
@@ -22,86 +21,38 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || ''
     const category = searchParams.get('category') || ''
 
-    const skip = (page - 1) * limit
-
-    // Build where clause
-    const where: any = {}
+    // Build filter
+    const filter: any = {}
     
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { content: { contains: search, mode: 'insensitive' } },
-        { excerpt: { contains: search, mode: 'insensitive' } }
+      filter.or = [
+        { title: { contains: search } },
+        { content: { contains: search } },
+        { excerpt: { contains: search } }
       ]
     }
 
     if (status) {
-      where.status = status
+      filter.status = { eq: status }
     }
 
     if (category) {
-      // Check if category is an ID or slug
-      const isId = category.length > 20 // Assuming IDs are longer than 20 characters
-      
-      if (isId) {
-        where.categories = {
-          some: {
-            categoryId: category
-          }
-        }
-      } else {
-        where.categories = {
-          some: {
-            category: {
-              slug: category
-            }
-          }
-        }
-      }
+      filter.category = { eq: category }
     }
 
     // Get posts
-    const posts = await prisma.post.findMany({
-      where,
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true
-          }
-        },
-        categories: {
-          include: {
-            category: true
-          }
-        },
-        tags: {
-          include: {
-            tag: true
-          }
-        },
-        _count: {
-          select: {
-            comments: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit
+    const { data: posts } = await client.models.Post.list({
+      filter,
+      limit,
     })
-
-    // Get total count
-    const total = await prisma.post.count({ where })
 
     return NextResponse.json({
       posts,
       pagination: {
         page,
         limit,
-        total,
-        pages: Math.ceil(total / limit)
+        total: posts.length,
+        pages: Math.ceil(posts.length / limit)
       }
     })
   } catch (error) {
@@ -113,9 +64,9 @@ export async function GET(request: NextRequest) {
 // POST /api/blog - Create new blog post
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const user = await getCurrentUser()
     
-    if (!session || !['ADMIN', 'INSTRUCTOR'].includes(session.user.role)) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -125,15 +76,8 @@ export async function POST(request: NextRequest) {
       content, 
       excerpt,
       featuredImage,
-      status = 'DRAFT',
-      visibility = 'PUBLIC',
-      password,
-      publishedAt,
-      scheduledAt,
-      categoryIds = [],
-      tagIds = [],
-      metaTitle,
-      metaDescription
+      category,
+      tags = []
     } = body
 
     // Validate required fields
@@ -144,53 +88,20 @@ export async function POST(request: NextRequest) {
     // Generate slug from title
     const slug = slugify(title)
 
-    // Check if slug already exists
-    const existingPost = await prisma.post.findUnique({
-      where: { slug }
-    })
-
-    if (existingPost) {
-      return NextResponse.json({ error: 'A post with this title already exists' }, { status: 400 })
-    }
-
     // Create post
-    const post = await prisma.post.create({
-      data: {
-        title,
-        slug,
-        content,
-        excerpt: excerpt || content.replace(/<[^>]*>/g, '').substring(0, 160),
-        featuredImage: featuredImage || null,
-        status,
-        visibility,
-        password: visibility === 'PASSWORD_PROTECTED' ? password : null,
-        publishedAt: status === 'PUBLISHED' ? (publishedAt ? new Date(publishedAt) : new Date()) : null,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        authorId: session.user.id,
-        metaTitle: metaTitle || title,
-        metaDescription: metaDescription || excerpt || content.replace(/<[^>]*>/g, '').substring(0, 160)
-      }
+    const { data: post } = await client.models.Post.create({
+      title,
+      slug,
+      content,
+      excerpt: excerpt || content.replace(/<[^>]*>/g, '').substring(0, 160),
+      featuredImage: featuredImage || null,
+      authorId: user.userId,
+      category,
+      tags,
+      isPublished: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
-
-    // Add categories
-    if (categoryIds.length > 0) {
-      await prisma.postCategory.createMany({
-        data: categoryIds.map((categoryId: string) => ({
-          postId: post.id,
-          categoryId
-        }))
-      })
-    }
-
-    // Add tags
-    if (tagIds.length > 0) {
-      await prisma.postTag.createMany({
-        data: tagIds.map((tagId: string) => ({
-          postId: post.id,
-          tagId
-        }))
-      })
-    }
 
     return NextResponse.json({ post }, { status: 201 })
   } catch (error) {

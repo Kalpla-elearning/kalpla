@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { client } from '@/lib/amplify-config'
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,115 +7,49 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '4')
     const category = searchParams.get('category')
 
-    // Build the where clause
-    const whereClause: any = {
-      status: 'PUBLISHED',
-      isFeatured: true
+    // Build the filter
+    const filter: any = {
+      status: { eq: 'published' }
     }
 
     if (category) {
-      whereClause.category = category
+      filter.category = { eq: category }
     }
 
-    // Fetch featured courses with related data
-    const featuredCourses = await prisma.course.findMany({
-      where: whereClause,
-      include: {
-        instructor: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-            avatar: true
-          }
-        },
-        modules: {
-          include: {
-            contents: {
-              select: {
-                duration: true
-              }
-            }
-          }
-        },
-        reviews: {
-          select: {
-            rating: true
-          }
-        },
-        enrollments: {
-          select: {
-            id: true
-          }
-        },
-        _count: {
-          select: {
-            enrollments: true,
-            reviews: true
-          }
-        }
-      },
-      orderBy: [
-        { isFeatured: 'desc' },
-        { createdAt: 'desc' }
-      ],
-      take: limit
+    // Fetch featured courses
+    const { data: courses } = await client.models.Course.list({
+      filter,
+      limit,
     })
 
     // Transform the data to match the expected format
-    const transformedCourses = featuredCourses.map(course => {
-      // Calculate total duration from modules
-      const totalDuration = course.modules.reduce((total, module) => {
-        return total + module.contents.reduce((moduleTotal, content) => {
-          return moduleTotal + (content.duration || 0)
-        }, 0)
-      }, 0)
-
-      // Calculate average rating
-      const avgRating = course.reviews.length > 0 
-        ? course.reviews.reduce((sum, review) => sum + review.rating, 0) / course.reviews.length
-        : 0
-
-      return {
-        id: course.id,
-        title: course.title,
-        description: course.description,
-        slug: course.slug,
-        price: course.price,
-        currency: course.currency,
-        category: course.category,
-        subcategory: course.subcategory,
-        level: course.level,
-        duration: totalDuration,
-        thumbnail: course.thumbnail,
-        thumbnailUrl: course.thumbnailUrl,
-        instructor: {
-          id: course.instructor.id,
-          name: course.instructor.name,
-          image: course.instructor.image || course.instructor.avatar
-        },
-        modules: course.modules.map(module => ({
-          id: module.id,
-          title: module.title,
-          description: module.description,
-          order: module.order,
-          contents: module.contents.map(content => ({
-            duration: content.duration
-          }))
-        })),
-        reviews: course.reviews.map(review => ({
-          rating: review.rating
-        })),
-        _count: {
-          enrollments: course._count.enrollments,
-          reviews: course._count.reviews
-        },
-        avgRating: Math.round(avgRating * 10) / 10,
-        isFeatured: course.isFeatured,
-        createdAt: course.createdAt,
-        updatedAt: course.updatedAt
-      }
-    })
+    const transformedCourses = courses.map(course => ({
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      slug: course.title?.toLowerCase().replace(/\s+/g, '-'),
+      price: course.price,
+      currency: course.currency || 'INR',
+      category: course.category,
+      level: course.difficulty,
+      duration: 0, // Will be calculated from modules
+      thumbnail: course.thumbnail,
+      instructor: {
+        id: course.instructorId,
+        name: 'Instructor', // Will be fetched from User model
+        image: null
+      },
+      modules: [], // Will be fetched separately
+      reviews: [], // Will be fetched separately
+      _count: {
+        enrollments: 0,
+        reviews: 0
+      },
+      avgRating: 0,
+      isFeatured: true,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt
+    }))
 
     return NextResponse.json({
       success: true,

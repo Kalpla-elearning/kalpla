@@ -1,197 +1,156 @@
-import { Amplify } from 'aws-amplify'
-import { getCurrentUser, signIn, signUp, signOut, confirmSignUp, resendSignUpCode } from 'aws-amplify/auth'
-import { fetchAuthSession } from 'aws-amplify/auth'
-
-// Configure Amplify
-const amplifyConfig = {
-  Auth: {
-    Cognito: {
-      userPoolId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_ID || '',
-      userPoolClientId: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_USER_POOL_WEB_CLIENT_ID || '',
-      loginWith: {
-        email: true,
-        oauth: {
-          domain: process.env.NEXT_PUBLIC_AMPLIFY_AUTH_DOMAIN || '',
-          scopes: ['openid', 'email', 'profile'],
-          redirectSignIn: [process.env.NEXT_PUBLIC_AMPLIFY_AUTH_REDIRECT_SIGN_IN || 'http://localhost:3000/auth/callback'],
-          redirectSignOut: [process.env.NEXT_PUBLIC_AMPLIFY_AUTH_REDIRECT_SIGN_OUT || 'http://localhost:3000'],
-          responseType: 'code',
-        },
-      },
-    },
-  },
-}
-
-// Only configure Amplify on the client side
-if (typeof window !== 'undefined') {
-  Amplify.configure(amplifyConfig)
-}
+import { getCurrentUser, signIn, signUp, signOut, confirmSignUp, resendSignUpCode } from 'aws-amplify/auth';
+import { client } from './amplify-config';
+import type { Schema } from '../amplify/data/resource';
 
 export interface AuthUser {
-  id: string
-  email: string
-  name: string
-  role: string
-  avatar?: string
-}
-
-export interface SignUpData {
-  email: string
-  password: string
-  name: string
-}
-
-export interface SignInData {
-  email: string
-  password: string
+  id: string;
+  email: string;
+  name?: string;
+  role?: string;
+  avatar?: string;
+  phone?: string;
+  bio?: string;
+  points?: number;
+  level?: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export class AmplifyAuthService {
-  // Sign up a new user
-  static async signUp(data: SignUpData) {
+  static async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      const { isSignUpComplete, userId, nextStep } = await signUp({
-        username: data.email,
-        password: data.password,
-        options: {
-          userAttributes: {
-            email: data.email,
-            name: data.name,
-          },
-        },
-      })
-
-      return {
-        success: true,
-        userId,
-        isSignUpComplete,
-        nextStep,
+      const user = await getCurrentUser();
+      
+      // Get user data from our database
+      const { data: userData } = await client.models.User.list({
+        filter: { email: { eq: user.signInDetails?.loginId } }
+      });
+      
+      if (userData && userData.length > 0) {
+        return userData[0] as AuthUser;
       }
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Sign up failed',
-      }
+      
+      // If user doesn't exist in our database, create them
+      const { data: newUser } = await client.models.User.create({
+        email: user.signInDetails?.loginId || '',
+        name: user.username,
+        role: 'STUDENT',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      
+      return newUser as AuthUser;
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      return null;
     }
   }
 
-  // Confirm sign up with verification code
-  static async confirmSignUp(email: string, code: string) {
+  static async signIn({ email, password }: { email: string; password: string }) {
     try {
-      const { isSignUpComplete } = await confirmSignUp({
+      const result = await signIn({
         username: email,
-        confirmationCode: code,
-      })
+        password,
+      });
 
-      return {
-        success: true,
-        isSignUpComplete,
-      }
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Confirmation failed',
-      }
-    }
-  }
-
-  // Resend verification code
-  static async resendVerificationCode(email: string) {
-    try {
-      await resendSignUpCode({
-        username: email,
-      })
-
-      return {
-        success: true,
-      }
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message || 'Failed to resend code',
-      }
-    }
-  }
-
-  // Sign in user
-  static async signIn(data: SignInData) {
-    try {
-      const { isSignedIn, nextStep } = await signIn({
-        username: data.email,
-        password: data.password,
-      })
-
-      if (isSignedIn) {
-        const user = await this.getCurrentUser()
+      if (result.isSignedIn) {
+        const user = await this.getCurrentUser();
         return {
           success: true,
           user,
-        }
+        };
       }
 
       return {
         success: false,
         error: 'Sign in failed',
-        nextStep,
-      }
+      };
     } catch (error: any) {
+      console.error('Sign in error:', error);
       return {
         success: false,
         error: error.message || 'Sign in failed',
-      }
+      };
     }
   }
 
-  // Get current user
-  static async getCurrentUser(): Promise<AuthUser | null> {
+  static async signUp({ email, password, name }: { email: string; password: string; name: string }) {
     try {
-      const user = await getCurrentUser()
-      const session = await fetchAuthSession()
-      
+      const result = await signUp({
+        username: email,
+        password,
+        options: {
+          userAttributes: {
+            email,
+            name,
+          },
+        },
+      });
+
       return {
-        id: user.userId,
-        email: user.signInDetails?.loginId || '',
-        name: user.signInDetails?.loginId || '',
-        role: 'STUDENT', // Default role, can be enhanced later
-        avatar: undefined,
-      }
-    } catch (error) {
-      return null
+        success: true,
+        userId: result.userId,
+      };
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      return {
+        success: false,
+        error: error.message || 'Sign up failed',
+      };
     }
   }
 
-  // Sign out user
   static async signOut() {
     try {
-      await signOut()
-      return { success: true }
+      await signOut();
+      return {
+        success: true,
+      };
     } catch (error: any) {
+      console.error('Sign out error:', error);
       return {
         success: false,
         error: error.message || 'Sign out failed',
-      }
+      };
     }
   }
 
-  // Check if user is authenticated
-  static async isAuthenticated(): Promise<boolean> {
+  static async confirmSignUp(email: string, code: string) {
     try {
-      await getCurrentUser()
-      return true
-    } catch (error) {
-      return false
+      await confirmSignUp({
+        username: email,
+        confirmationCode: code,
+      });
+
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      console.error('Confirm sign up error:', error);
+      return {
+        success: false,
+        error: error.message || 'Confirmation failed',
+      };
     }
   }
 
-  // Get user session
-  static async getSession() {
+  static async resendVerificationCode(email: string) {
     try {
-      const session = await fetchAuthSession()
-      return session
-    } catch (error) {
-      return null
+      await resendSignUpCode({
+        username: email,
+      });
+
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      console.error('Resend verification code error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to resend verification code',
+      };
     }
   }
 }
-
-export default AmplifyAuthService
