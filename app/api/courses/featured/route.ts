@@ -28,16 +28,15 @@ export async function GET(request: NextRequest) {
       title: course.title,
       description: course.description,
       slug: course.title?.toLowerCase().replace(/\s+/g, '-'),
-      price: course.price,
+      price: course.price || 0,
       currency: course.currency || 'INR',
       category: course.category,
-      level: course.difficulty,
-      duration: 0, // Will be calculated from modules
+      difficulty: course.difficulty,
       thumbnail: course.thumbnail,
       instructor: {
         id: course.instructorId,
         name: 'Instructor', // Will be fetched from User model
-        image: null
+        avatar: null
       },
       modules: [], // Will be fetched separately
       reviews: [], // Will be fetched separately

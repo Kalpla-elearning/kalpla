@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { Bars3Icon, XMarkIcon, AcademicCapIcon } from '@heroicons/react/24/outline'
 import ProfileDropdown from './ProfileDropdown'
 
 export function Header() {
-  const { data: session, status } = useSession()
+  const { user, loading, signOut } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const navigation = [
@@ -46,9 +46,9 @@ export function Header() {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
-            {status === 'loading' ? (
+            {loading ? (
               <div className="animate-pulse bg-gray-200 h-8 w-8 rounded-full" />
-            ) : session ? (
+            ) : user ? (
               <ProfileDropdown />
             ) : (
               <div className="flex items-center space-x-4">
@@ -73,7 +73,7 @@ export function Header() {
                   {item.name}
                 </Link>
               ))}
-              {session ? (
+              {user ? (
                 <>
                   <Link href="/dashboard" className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium" onClick={() => setIsMenuOpen(false)}>
                     Dashboard
@@ -81,12 +81,12 @@ export function Header() {
                   <Link href="/dashboard/profile" className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium" onClick={() => setIsMenuOpen(false)}>
                     My Profile
                   </Link>
-                  {session.user?.role === 'INSTRUCTOR' && (
+                  {user.role === 'INSTRUCTOR' && (
                     <Link href="/instructor/dashboard" className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium" onClick={() => setIsMenuOpen(false)}>
                       Instructor Dashboard
                     </Link>
                   )}
-                  {session.user?.role === 'ADMIN' && (
+                  {user.role === 'ADMIN' && (
                     <Link href="/admin/dashboard" className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium" onClick={() => setIsMenuOpen(false)}>
                       Admin Dashboard
                     </Link>

@@ -1,4 +1,6 @@
-import { prisma } from '@/lib/prisma'
+'use client'
+
+import { useState, useEffect } from 'react'
 import CourseCard from '@/components/courses/CourseCard'
 import { 
   MagnifyingGlassIcon, 
@@ -6,64 +8,129 @@ import {
   AcademicCapIcon
 } from '@heroicons/react/24/outline'
 
-export const dynamic = 'force-dynamic'
-
-async function getCourses() {
-  try {
-    const courses = await prisma.course.findMany({
-      where: { status: 'PUBLISHED' },
-      include: {
-        instructor: {
-          select: {
-            id: true,
-            name: true,
-            avatar: true
-          }
-        },
-        modules: {
-          include: {
-            contents: true
-          }
-        },
-        enrollments: true,
-        reviews: true,
-        _count: {
-          select: {
-            enrollments: true,
-            reviews: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-    return courses
-  } catch (error) {
-    console.error('Error fetching courses:', error)
-    return []
+interface Course {
+  id: string
+  title: string
+  description: string
+  price: number
+  currency: string
+  category: string
+  difficulty: string
+  thumbnail: string
+  instructor: {
+    id: string
+    name: string
+    avatar: string
   }
+  modules: any[]
+  enrollments: any[]
+  reviews: any[]
+  _count: {
+    enrollments: number
+    reviews: number
+  }
+  avgRating: number
+  createdAt: string
 }
 
-async function getCategories() {
-  try {
-    const categories = await prisma.category.findMany({
-      select: {
-        id: true,
-        name: true,
-        color: true
+export default function CoursesPage() {
+  const [courses, setCourses] = useState<Course[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedDifficulty, setSelectedDifficulty] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
+
+  useEffect(() => {
+    fetchCourses()
+  }, [])
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/courses')
+      const data = await response.json()
+      
+      if (data.success) {
+        setCourses(data.data)
+      } else {
+        setError('Failed to fetch courses')
       }
-    })
-    return categories
-  } catch (error) {
-    console.error('Error fetching categories:', error)
-    return []
+    } catch (err) {
+      setError('Failed to fetch courses')
+      console.error('Error fetching courses:', err)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
-export default async function CoursesPage() {
-  const [courses, categories] = await Promise.all([
-    getCourses(),
-    getCategories()
-  ])
+  const categories = [
+    { id: '1', name: 'Technology', color: 'bg-blue-500' },
+    { id: '2', name: 'Business', color: 'bg-green-500' },
+    { id: '3', name: 'Design', color: 'bg-purple-500' },
+    { id: '4', name: 'Marketing', color: 'bg-orange-500' },
+    { id: '5', name: 'Finance', color: 'bg-red-500' },
+  ]
+
+  const difficulties = [
+    { value: 'beginner', label: 'Beginner' },
+    { value: 'intermediate', label: 'Intermediate' },
+    { value: 'advanced', label: 'Advanced' },
+  ]
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         course.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = !selectedCategory || course.category === selectedCategory
+    const matchesDifficulty = !selectedDifficulty || course.difficulty === selectedDifficulty
+    
+    return matchesSearch && matchesCategory && matchesDifficulty
+  })
+
+  const sortedCourses = [...filteredCourses].sort((a, b) => {
+    switch (sortBy) {
+      case 'newest':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      case 'popular':
+        return b._count.enrollments - a._count.enrollments
+      case 'rating':
+        return b.avgRating - a.avgRating
+      case 'price-low':
+        return a.price - b.price
+      case 'price-high':
+        return b.price - a.price
+      default:
+        return 0
+    }
+  })
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading courses...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={fetchCourses}
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -91,6 +158,8 @@ export default async function CoursesPage() {
               <input
                 type="text"
                 placeholder="Search courses..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
@@ -101,16 +170,36 @@ export default async function CoursesPage() {
                 <FunnelIcon className="h-4 w-4" />
                 Filters
               </button>
-              <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+              <select 
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
                 <option value="">All Categories</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category.id} value={category.name}>
                     {category.name}
                   </option>
                 ))}
               </select>
-              <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                <option value="">Sort by</option>
+              <select 
+                value={selectedDifficulty}
+                onChange={(e) => setSelectedDifficulty(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="">All Levels</option>
+                {difficulties.map((difficulty) => (
+                  <option key={difficulty.value} value={difficulty.value}>
+                    {difficulty.label}
+                  </option>
+                ))}
+              </select>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="newest">Sort by</option>
                 <option value="newest">Newest</option>
                 <option value="popular">Most Popular</option>
                 <option value="rating">Highest Rated</option>
@@ -140,50 +229,43 @@ export default async function CoursesPage() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary-600">
-                  {courses.reduce((sum, course) => sum + course._count.reviews, 0)}
+                  {Math.round(courses.reduce((sum, course) => sum + course.avgRating, 0) / courses.length * 10) / 10 || 0}
                 </div>
-                <div className="text-sm text-gray-600">Total Reviews</div>
+                <div className="text-sm text-gray-600">Average Rating</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary-600">
-                  {courses.reduce((sum, course) => {
-                    const avgRating = course.reviews.length > 0 
-                      ? course.reviews.reduce((acc, review) => acc + review.rating, 0) / course.reviews.length
-                      : 0
-                    return sum + avgRating
-                  }, 0).toFixed(1)}
+                  {categories.length}
                 </div>
-                <div className="text-sm text-gray-600">Average Rating</div>
+                <div className="text-sm text-gray-600">Categories</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Courses */}
-        {courses.length === 0 ? (
+        {/* Results */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {sortedCourses.length} Course{sortedCourses.length !== 1 ? 's' : ''} Found
+          </h2>
+          <p className="text-gray-600">
+            {searchTerm && `Search results for "${searchTerm}"`}
+            {selectedCategory && ` in ${selectedCategory}`}
+            {selectedDifficulty && ` at ${selectedDifficulty} level`}
+          </p>
+        </div>
+
+        {/* Courses Grid */}
+        {sortedCourses.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <AcademicCapIcon className="mx-auto h-12 w-12" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
-            <p className="text-gray-600">Check back soon for new courses!</p>
+            <AcademicCapIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
+            <p className="text-gray-600">Try adjusting your search or filter criteria.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {courses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                variant="default"
-                showStats={true}
-                showCategory={true}
-                showInstructor={true}
-                showPrice={true}
-                showRating={true}
-                showEnrollments={true}
-                showDuration={true}
-                showLessons={true}
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedCourses.map((course) => (
+              <CourseCard key={course.id} course={course} />
             ))}
           </div>
         )}

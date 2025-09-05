@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/components/providers/AuthProvider'
 import Link from 'next/link'
 import { 
   UserIcon, 
@@ -13,7 +13,7 @@ import {
 import { getRoleDisplayName, getRoleColor } from '@/lib/utils'
 
 export default function ProfileDropdown() {
-  const { data: session } = useSession()
+  const { user, signOut } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -30,7 +30,7 @@ export default function ProfileDropdown() {
     }
   }, [])
 
-  if (!session?.user) {
+  if (!user) {
     return null
   }
 
@@ -45,7 +45,7 @@ export default function ProfileDropdown() {
         <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200">
           <UserIcon className="w-full h-full text-gray-400 p-1" />
         </div>
-        <span className="text-sm font-medium hidden sm:block">{session.user.name}</span>
+        <span className="text-sm font-medium hidden sm:block">{user.name}</span>
         <ChevronDownIcon className="h-4 w-4 hidden sm:block" />
       </button>
 
@@ -59,13 +59,13 @@ export default function ProfileDropdown() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  {session.user.name}
+                  {user.name}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {session.user.email}
+                  {user.email}
                 </p>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${getRoleColor(session.user.role)}`}>
-                  {getRoleDisplayName(session.user.role)}
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${getRoleColor(user.role)}`}>
+                  {getRoleDisplayName(user.role)}
                 </span>
               </div>
             </div>
@@ -91,7 +91,7 @@ export default function ProfileDropdown() {
               My Profile
             </Link>
 
-            {session.user.role === 'INSTRUCTOR' && (
+            {user.role === 'INSTRUCTOR' && (
               <Link
                 href="/instructor/dashboard"
                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -102,7 +102,7 @@ export default function ProfileDropdown() {
               </Link>
             )}
 
-            {session.user.role === 'ADMIN' && (
+            {user.role === 'ADMIN' && (
               <Link
                 href="/admin/dashboard"
                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
