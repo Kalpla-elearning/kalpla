@@ -18,7 +18,7 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline'
 
-export const dynamic = 'force-dynamic'
+
 
 async function getPaymentStats() {
   const [

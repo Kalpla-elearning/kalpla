@@ -4,7 +4,7 @@ import Link from 'next/link'
 import CourseCard from '@/components/courses/CourseCard'
 import { MagnifyingGlassIcon, FunnelIcon, AdjustmentsHorizontalIcon, StarIcon, ClockIcon, UserIcon, AcademicCapIcon } from '@heroicons/react/24/outline'
 
-export const dynamic = 'force-dynamic'
+
 
 async function getCoursesByCategory(categorySlug: string, searchParams: any) {
   const { price, sort } = searchParams

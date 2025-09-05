@@ -18,7 +18,7 @@ import {
   ChartBarIcon
 } from '@heroicons/react/24/outline'
 
-export const dynamic = 'force-dynamic'
+
 
 async function getDegreeProgram(slug: string) {
   const program = await prisma.degreeProgram.findFirst({

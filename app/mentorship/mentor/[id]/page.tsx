@@ -14,7 +14,7 @@ import {
   ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 
-export const dynamic = 'force-dynamic'
+
 
 interface MentorProfile {
   id: string

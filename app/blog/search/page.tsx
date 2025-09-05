@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { PostCard } from '@/components/blog/PostCard'
 
-export const dynamic = 'force-dynamic'
+
 
 async function searchPosts(searchParams: { q?: string; category?: string; author?: string; sort?: string; date?: string }) {
   const { q, category, author, sort, date } = searchParams

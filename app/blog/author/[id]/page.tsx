@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { PostCard } from '@/components/blog/PostCard'
 
-export const dynamic = 'force-dynamic'
+
 
 async function getAuthor(id: string) {
   const author = await prisma.user.findUnique({

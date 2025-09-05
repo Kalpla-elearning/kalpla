@@ -13,7 +13,7 @@ import {
   RocketLaunchIcon
 } from '@heroicons/react/24/outline'
 
-export const dynamic = 'force-dynamic'
+
 
 interface MentorshipProgram {
   id: string
