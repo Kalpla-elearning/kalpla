@@ -39,7 +39,7 @@ const testimonials = [
     company: 'TechStart Inc.',
     image: '/api/placeholder/80/80',
     rating: 5,
-    text: 'The Kalpla mentorship program was a game-changer for my startup. The guidance and connections I gained helped me raise $2M in Series A funding.',
+    text: 'The Kalpla mentorship program was a game-changer for my startup. The guidance and connections I gained helped me raise ₹16.7Cr in Series A funding.',
     course: 'Kalpla Startup Mentorship Program'
   },
   {

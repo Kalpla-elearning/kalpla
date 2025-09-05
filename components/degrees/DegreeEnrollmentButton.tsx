@@ -137,7 +137,7 @@ export default function DegreeEnrollmentButton({
         ) : (
           <>
             <CurrencyDollarIcon className="h-5 w-5" />
-            Enroll Now - ${amount.toLocaleString()}
+            Enroll Now - ₹{amount?.toLocaleString() || '0'}
           </>
         )}
       </button>

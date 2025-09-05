@@ -132,10 +132,10 @@ export function FeaturedDegreePrograms() {
                 {/* Price */}
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <span className="text-2xl font-bold text-gray-900">${program.price.toLocaleString()}</span>
+                    <span className="text-2xl font-bold text-gray-900">₹{program.price.toLocaleString()}</span>
                     {program.originalPrice > program.price && (
                       <span className="text-lg text-gray-500 line-through ml-2">
-                        ${program.originalPrice.toLocaleString()}
+                        ₹{program.originalPrice.toLocaleString()}
                       </span>
                     )}
                   </div>

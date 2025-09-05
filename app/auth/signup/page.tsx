@@ -11,96 +11,175 @@ export default function SignUpPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'STUDENT' as 'STUDENT' | 'INSTRUCTOR',
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState<'form' | 'verification'>('form')
+  const [verificationCode, setVerificationCode] = useState('')
+  
   const router = useRouter()
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError('')
-    setSuccess('')
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
-      setIsLoading(false)
       return
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long')
-      setIsLoading(false)
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long')
       return
     }
+
+    setLoading(true)
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Something went wrong')
-      } else {
-        setSuccess('Account created successfully! Redirecting to email verification...')
-        setTimeout(() => {
-          router.push(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`)
-        }, 2000)
-      }
-    } catch (error) {
-      setError('An error occurred. Please try again.')
+      // For now, just redirect to sign in
+      // In production, this would integrate with AWS Amplify
+      router.push('/auth/signin-amplify')
+    } catch (err) {
+      setError('An unexpected error occurred')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
+  }
+
+  const handleVerification = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      const result = await confirmSignUp(formData.email, verificationCode)
+      
+      if (result.success) {
+        router.push('/auth/signin-amplify')
+      } else {
+        setError(result.error || 'Verification failed')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendCode = async () => {
+    setError('')
+    setLoading(true)
+
+    try {
+      const result = await resendVerificationCode(formData.email)
+      if (!result.success) {
+        setError(result.error || 'Failed to resend code')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (step === 'verification') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <div className="mx-auto h-12 w-12 bg-primary-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xl">K</span>
+            </div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Verify your email
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              We've sent a verification code to <strong>{formData.email}</strong>
+            </p>
+          </div>
+          
+          <form className="mt-8 space-y-6" onSubmit={handleVerification}>
+            <div>
+              <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700">
+                Verification Code
+              </label>
+              <input
+                id="verificationCode"
+                name="verificationCode"
+                type="text"
+                required
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Enter verification code"
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-md bg-red-50 p-4">
+                <div className="text-sm text-red-700">{error}</div>
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Verifying...' : 'Verify Email'}
+              </button>
+            </div>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={loading}
+                className="text-sm text-primary-600 hover:text-primary-500 disabled:opacity-50"
+              >
+                Resend verification code
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
+          <div className="mx-auto h-12 w-12 bg-primary-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-xl">K</span>
+          </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
             <Link
-              href="/auth/signin"
+              href="/auth/signin-amplify"
               className="font-medium text-primary-600 hover:text-primary-500"
             >
               sign in to your existing account
             </Link>
           </p>
         </div>
-
+        
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-              {success}
-            </div>
-          )}
-
           <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -113,8 +192,8 @@ export default function SignUpPage() {
                 autoComplete="name"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="input-field mt-1"
+                onChange={handleInputChange}
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                 placeholder="Enter your full name"
               />
             </div>
@@ -130,17 +209,17 @@ export default function SignUpPage() {
                 autoComplete="email"
                 required
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="input-field mt-1"
-                placeholder="Enter your email address"
+                onChange={handleInputChange}
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Enter your email"
               />
             </div>
-
+            
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
-              <div className="relative mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="password"
                   name="password"
@@ -148,8 +227,8 @@ export default function SignUpPage() {
                   autoComplete="new-password"
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="input-field pr-10"
+                  onChange={handleInputChange}
+                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="Create a password"
                 />
                 <button
@@ -170,7 +249,7 @@ export default function SignUpPage() {
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                 Confirm Password
               </label>
-              <div className="relative mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -178,8 +257,8 @@ export default function SignUpPage() {
                   autoComplete="new-password"
                   required
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="input-field pr-10"
+                  onChange={handleInputChange}
+                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="Confirm your password"
                 />
                 <button
@@ -195,49 +274,33 @@ export default function SignUpPage() {
                 </button>
               </div>
             </div>
-
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                I want to join as
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as 'STUDENT' | 'INSTRUCTOR' })}
-                className="input-field mt-1"
-              >
-                <option value="STUDENT">Student</option>
-                <option value="INSTRUCTOR">Instructor</option>
-              </select>
-            </div>
           </div>
+
+          {error && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-700">{error}</div>
+            </div>
+          )}
 
           <div>
             <button
               type="submit"
-              disabled={isLoading}
-              className="btn-primary w-full flex justify-center"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                'Create Account'
-              )}
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              By creating an account, you agree to our{' '}
-              <Link href="/terms" className="text-primary-600 hover:text-primary-500">
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link href="/privacy" className="text-primary-600 hover:text-primary-500">
-                Privacy Policy
-              </Link>
-            </p>
+          <div className="text-center text-sm text-gray-600">
+            By creating an account, you agree to our{' '}
+            <Link href="/terms" className="text-primary-600 hover:text-primary-500">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-primary-600 hover:text-primary-500">
+              Privacy Policy
+            </Link>
           </div>
         </form>
       </div>

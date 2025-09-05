@@ -9,44 +9,54 @@ import {
 export const dynamic = 'force-dynamic'
 
 async function getCourses() {
-  const courses = await prisma.course.findMany({
-    where: { status: 'PUBLISHED' },
-    include: {
-      instructor: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true
+  try {
+    const courses = await prisma.course.findMany({
+      where: { status: 'PUBLISHED' },
+      include: {
+        instructor: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true
+          }
+        },
+        modules: {
+          include: {
+            contents: true
+          }
+        },
+        enrollments: true,
+        reviews: true,
+        _count: {
+          select: {
+            enrollments: true,
+            reviews: true
+          }
         }
       },
-      modules: {
-        include: {
-          contents: true
-        }
-      },
-      enrollments: true,
-      reviews: true,
-      _count: {
-        select: {
-          enrollments: true,
-          reviews: true
-        }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-  return courses
+      orderBy: { createdAt: 'desc' }
+    })
+    return courses
+  } catch (error) {
+    console.error('Error fetching courses:', error)
+    return []
+  }
 }
 
 async function getCategories() {
-  const categories = await prisma.category.findMany({
-    select: {
-      id: true,
-      name: true,
-      color: true
-    }
-  })
-  return categories
+  try {
+    const categories = await prisma.category.findMany({
+      select: {
+        id: true,
+        name: true,
+        color: true
+      }
+    })
+    return categories
+  } catch (error) {
+    console.error('Error fetching categories:', error)
+    return []
+  }
 }
 
 export default async function CoursesPage() {

@@ -95,6 +95,11 @@ export default async function DegreeProgramPage({ params }: { params: { slug: st
   const features = program.features ? JSON.parse(program.features) : []
   const requirements = program.requirements ? JSON.parse(program.requirements) : []
   const syllabus = program.syllabus ? JSON.parse(program.syllabus) : []
+  
+  // Safety checks for arrays
+  const safeFeatures = Array.isArray(features) ? features : []
+  const safeRequirements = Array.isArray(requirements) ? requirements : []
+  const safeSyllabus = Array.isArray(syllabus) ? syllabus : []
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -167,11 +172,11 @@ export default async function DegreeProgramPage({ params }: { params: { slug: st
             </div>
 
             {/* Features */}
-            {features.length > 0 && (
+            {safeFeatures.length > 0 && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Program Features</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {features.map((feature: string, index: number) => (
+                  {safeFeatures.map((feature: string, index: number) => (
                     <div key={index} className="flex items-center">
                       <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2" />
                       <span className="text-gray-700">{feature}</span>
@@ -182,15 +187,15 @@ export default async function DegreeProgramPage({ params }: { params: { slug: st
             )}
 
             {/* Curriculum */}
-            {syllabus.length > 0 && (
+            {safeSyllabus.length > 0 && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Curriculum</h2>
                 <div className="space-y-3">
-                  {syllabus.map((semester: any, index: number) => (
+                  {safeSyllabus.map((semester: any, index: number) => (
                     <div key={index} className="border border-gray-200 rounded-lg p-4">
                       <h3 className="font-medium text-gray-900 mb-2">Semester {semester.semester}</h3>
                       <ul className="space-y-1">
-                        {semester.courses.map((course: string, courseIndex: number) => (
+                        {(semester.subjects || []).map((course: string, courseIndex: number) => (
                           <li key={courseIndex} className="flex items-center text-gray-700">
                             <BookOpenIcon className="h-4 w-4 text-gray-400 mr-2" />
                             {course}
@@ -204,11 +209,11 @@ export default async function DegreeProgramPage({ params }: { params: { slug: st
             )}
 
             {/* Requirements */}
-            {requirements.length > 0 && (
+            {safeRequirements.length > 0 && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Admission Requirements</h2>
                 <ul className="space-y-2">
-                  {requirements.map((requirement: string, index: number) => (
+                  {safeRequirements.map((requirement: string, index: number) => (
                     <li key={index} className="flex items-start">
                       <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
                       <span className="text-gray-700">{requirement}</span>
@@ -334,7 +339,7 @@ export default async function DegreeProgramPage({ params }: { params: { slug: st
         </div>
 
         {/* Related Programs */}
-        {relatedPrograms.length > 0 && (
+        {relatedPrograms && relatedPrograms.length > 0 && (
           <div className="mt-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Related Programs</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

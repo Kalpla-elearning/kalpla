@@ -1,305 +1,527 @@
 const { PrismaClient } = require('@prisma/client')
+const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
 
 const prisma = new PrismaClient()
 
 async function seedBlogData() {
-  console.log('🌱 Seeding WordPress-like blog data...')
-  
   try {
-    // Create categories
-    console.log('\n1. Creating categories...')
-    const categories = [
-      { name: 'Technology', description: 'Latest tech news and tutorials', color: '#3B82F6' },
-      { name: 'Web Development', description: 'Frontend and backend development', color: '#10B981' },
-      { name: 'Design', description: 'UI/UX design and creative content', color: '#F59E0B' },
-      { name: 'Business', description: 'Entrepreneurship and business insights', color: '#EF4444' },
-      { name: 'Education', description: 'Learning and educational content', color: '#8B5CF6' }
-    ]
+    console.log('🌱 Seeding blog data...')
 
-    const createdCategories = []
-    for (const category of categories) {
-      const slug = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-      const created = await prisma.category.create({
-        data: {
-          name: category.name,
-          slug,
-          description: category.description,
-          color: category.color
-        }
-      })
-      createdCategories.push(created)
-      console.log(`✅ Created category: "${created.name}"`)
-    }
-
-    // Create tags
-    console.log('\n2. Creating tags...')
+    // First, let's create some tags
     const tags = [
-      { name: 'React', description: 'React.js framework', color: '#61DAFB' },
-      { name: 'JavaScript', description: 'JavaScript programming', color: '#F7DF1E' },
-      { name: 'Node.js', description: 'Node.js backend development', color: '#339933' },
-      { name: 'CSS', description: 'CSS styling and design', color: '#1572B6' },
-      { name: 'HTML', description: 'HTML markup language', color: '#E34F26' },
-      { name: 'TypeScript', description: 'TypeScript programming', color: '#3178C6' },
-      { name: 'Next.js', description: 'Next.js framework', color: '#000000' },
-      { name: 'Tutorial', description: 'Step-by-step tutorials', color: '#10B981' },
-      { name: 'Tips', description: 'Useful tips and tricks', color: '#F59E0B' },
-      { name: 'News', description: 'Latest news and updates', color: '#EF4444' }
+      { name: 'JavaScript', slug: 'javascript', description: 'JavaScript programming and development', color: '#F7DF1E' },
+      { name: 'React', slug: 'react', description: 'React library and ecosystem', color: '#61DAFB' },
+      { name: 'Python', slug: 'python', description: 'Python programming language', color: '#3776AB' },
+      { name: 'Machine Learning', slug: 'machine-learning', description: 'Machine learning and AI', color: '#FF6F00' },
+      { name: 'Web Development', slug: 'web-development', description: 'Web development technologies', color: '#3B82F6' },
+      { name: 'Tutorial', slug: 'tutorial', description: 'Step-by-step tutorials', color: '#10B981' },
+      { name: 'Tips', slug: 'tips', description: 'Programming tips and tricks', color: '#F59E0B' },
+      { name: 'Career', slug: 'career', description: 'Career advice and development', color: '#8B5CF6' }
     ]
 
     const createdTags = []
-    for (const tag of tags) {
-      const slug = tag.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-      const created = await prisma.tag.create({
-        data: {
-          name: tag.name,
-          slug,
-          description: tag.description,
-          color: tag.color
-        }
+    for (const tagData of tags) {
+      const existingTag = await prisma.tag.findUnique({
+        where: { slug: tagData.slug }
       })
-      createdTags.push(created)
-      console.log(`✅ Created tag: "${created.name}"`)
+
+      if (!existingTag) {
+        const tag = await prisma.tag.create({
+          data: tagData
+        })
+        createdTags.push(tag)
+        console.log(`✅ Created tag: ${tag.name}`)
+      } else {
+        createdTags.push(existingTag)
+        console.log(`ℹ️  Tag already exists: ${existingTag.name}`)
+      }
     }
 
-    // Get admin user
-    const adminUser = await prisma.user.findFirst({
-      where: { role: 'ADMIN' }
+    // Get existing categories
+    const categories = await prisma.category.findMany()
+    console.log(`Found ${categories.length} existing categories`)
+
+    // Get a user to be the author
+    let author = await prisma.user.findFirst({
+      where: { role: 'INSTRUCTOR' }
     })
 
-    if (!adminUser) {
-      console.log('❌ No admin user found. Please create an admin user first.')
-      return
-    }
-
-    // Create blog posts
-    console.log('\n3. Creating blog posts...')
-    const posts = [
-      {
-        title: 'Getting Started with Next.js 14',
-        excerpt: 'Learn how to build modern web applications with Next.js 14 and its new features.',
-        content: `
-          <h2>Introduction to Next.js 14</h2>
-          <p>Next.js 14 brings exciting new features and improvements to the React framework. In this comprehensive guide, we'll explore the latest updates and how to get started.</p>
-          
-          <h3>Key Features</h3>
-          <ul>
-            <li>App Router improvements</li>
-            <li>Enhanced performance</li>
-            <li>Better TypeScript support</li>
-            <li>Improved developer experience</li>
-          </ul>
-          
-          <h3>Getting Started</h3>
-          <p>To create a new Next.js 14 project, run the following command:</p>
-          <pre><code>npx create-next-app@latest my-app</code></pre>
-          
-          <p>This will create a new Next.js application with all the latest features and best practices.</p>
-        `,
-        status: 'PUBLISHED',
-        visibility: 'PUBLIC',
-        categoryIds: [createdCategories[0].id, createdCategories[1].id],
-        tagIds: [createdTags[0].id, createdTags[1].id, createdTags[6].id, createdTags[7].id]
-      },
-      {
-        title: 'Mastering React Hooks in 2024',
-        excerpt: 'A deep dive into React Hooks and how to use them effectively in modern React applications.',
-        content: `
-          <h2>Understanding React Hooks</h2>
-          <p>React Hooks revolutionized how we write React components. They allow us to use state and other React features in functional components.</p>
-          
-          <h3>Common Hooks</h3>
-          <ul>
-            <li><strong>useState:</strong> Manage component state</li>
-            <li><strong>useEffect:</strong> Handle side effects</li>
-            <li><strong>useContext:</strong> Access React context</li>
-            <li><strong>useReducer:</strong> Complex state management</li>
-          </ul>
-          
-          <h3>Best Practices</h3>
-          <p>When using hooks, follow these best practices:</p>
-          <ol>
-            <li>Only call hooks at the top level</li>
-            <li>Don't call hooks inside loops or conditions</li>
-            <li>Use custom hooks to extract component logic</li>
-          </ol>
-        `,
-        status: 'PUBLISHED',
-        visibility: 'PUBLIC',
-        categoryIds: [createdCategories[1].id],
-        tagIds: [createdTags[0].id, createdTags[1].id, createdTags[7].id]
-      },
-      {
-        title: 'CSS Grid vs Flexbox: When to Use Which',
-        excerpt: 'Learn the differences between CSS Grid and Flexbox and when to use each layout method.',
-        content: `
-          <h2>CSS Layout Methods</h2>
-          <p>CSS Grid and Flexbox are two powerful layout systems in CSS. Understanding when to use each is crucial for modern web development.</p>
-          
-          <h3>CSS Grid</h3>
-          <p>CSS Grid is perfect for two-dimensional layouts. Use it when you need to control both rows and columns.</p>
-          
-          <h3>Flexbox</h3>
-          <p>Flexbox is ideal for one-dimensional layouts. Use it for aligning items in a single direction.</p>
-          
-          <h3>When to Use Each</h3>
-          <ul>
-            <li><strong>Use Grid:</strong> Overall page layout, complex 2D layouts</li>
-            <li><strong>Use Flexbox:</strong> Component layouts, aligning items in one direction</li>
-          </ul>
-        `,
-        status: 'PUBLISHED',
-        visibility: 'PUBLIC',
-        categoryIds: [createdCategories[2].id, createdCategories[1].id],
-        tagIds: [createdTags[3].id, createdTags[7].id, createdTags[8].id]
-      },
-      {
-        title: 'Building Scalable Node.js Applications',
-        excerpt: 'Best practices for building scalable and maintainable Node.js applications.',
-        content: `
-          <h2>Scalable Node.js Architecture</h2>
-          <p>Building scalable Node.js applications requires careful planning and following best practices.</p>
-          
-          <h3>Key Principles</h3>
-          <ul>
-            <li>Modular architecture</li>
-            <li>Proper error handling</li>
-            <li>Performance optimization</li>
-            <li>Security best practices</li>
-          </ul>
-          
-          <h3>Tools and Libraries</h3>
-          <p>Essential tools for Node.js development:</p>
-          <ul>
-            <li>Express.js for web frameworks</li>
-            <li>Prisma for database management</li>
-            <li>Jest for testing</li>
-            <li>ESLint for code quality</li>
-          </ul>
-        `,
-        status: 'DRAFT',
-        visibility: 'PUBLIC',
-        categoryIds: [createdCategories[0].id, createdCategories[1].id],
-        tagIds: [createdTags[2].id, createdTags[1].id, createdTags[7].id]
-      },
-      {
-        title: 'The Future of Web Development',
-        excerpt: 'Exploring emerging trends and technologies that will shape the future of web development.',
-        content: `
-          <h2>Emerging Technologies</h2>
-          <p>The web development landscape is constantly evolving. Here are the trends to watch in 2024.</p>
-          
-          <h3>AI and Machine Learning</h3>
-          <p>AI is becoming increasingly integrated into web applications, from chatbots to content generation.</p>
-          
-          <h3>WebAssembly</h3>
-          <p>WebAssembly enables high-performance applications to run in the browser.</p>
-          
-          <h3>Progressive Web Apps</h3>
-          <p>PWAs continue to bridge the gap between web and native applications.</p>
-        `,
-        status: 'PUBLISHED',
-        visibility: 'PUBLIC',
-        categoryIds: [createdCategories[0].id],
-        tagIds: [createdTags[9].id, createdTags[8].id]
-      }
-    ]
-
-    const createdPosts = []
-    for (const post of posts) {
-      const slug = post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-      const created = await prisma.post.create({
+    if (!author) {
+      // Create a sample author if none exists
+      author = await prisma.user.create({
         data: {
-          title: post.title,
-          slug,
-          content: post.content,
-          excerpt: post.excerpt,
-          status: post.status,
-          visibility: post.visibility,
-          authorId: adminUser.id,
-          publishedAt: post.status === 'PUBLISHED' ? new Date() : null,
-          metaTitle: post.title,
-          metaDescription: post.excerpt
+          email: 'blog.author@kalpla.in',
+          name: 'Kalpla Blog Team',
+          role: 'INSTRUCTOR',
+          bio: 'Official blog team at Kalpla',
+          isVerified: true
         }
       })
-
-      // Add categories
-      if (post.categoryIds.length > 0) {
-        await prisma.postCategory.createMany({
-          data: post.categoryIds.map((categoryId) => ({
-            postId: created.id,
-            categoryId
-          }))
-        })
-      }
-
-      // Add tags
-      if (post.tagIds.length > 0) {
-        await prisma.postTag.createMany({
-          data: post.tagIds.map((tagId) => ({
-            postId: created.id,
-            tagId
-          }))
-        })
-      }
-
-      createdPosts.push(created)
-      console.log(`✅ Created post: "${created.title}" - ${created.status}`)
+      console.log(`✅ Created author: ${author.name}`)
     }
 
-    // Create some comments
-    console.log('\n4. Creating comments...')
-    const comments = [
+    // Create sample blog posts
+    const blogPosts = [
       {
-        content: 'Great article! Very helpful for beginners.',
-        postId: createdPosts[0].id,
-        authorId: adminUser.id,
-        status: 'APPROVED',
-        isApproved: true
+        title: 'Getting Started with React: A Complete Beginner\'s Guide',
+        slug: 'getting-started-with-react-complete-beginners-guide',
+        content: `# Getting Started with React: A Complete Beginner's Guide
+
+React has become one of the most popular JavaScript libraries for building user interfaces. Whether you're a complete beginner or coming from another framework, this guide will help you get started with React.
+
+## What is React?
+
+React is a JavaScript library created by Facebook for building user interfaces, particularly web applications. It allows you to create reusable UI components and manage the state of your application efficiently.
+
+## Why Choose React?
+
+- **Component-Based Architecture**: Build encapsulated components that manage their own state
+- **Virtual DOM**: React uses a virtual DOM for better performance
+- **Ecosystem**: Huge ecosystem of libraries and tools
+- **Community**: Large, active community with lots of resources
+- **Job Market**: High demand for React developers
+
+## Setting Up Your First React App
+
+The easiest way to get started with React is using Create React App:
+
+\`\`\`bash
+npx create-react-app my-first-react-app
+cd my-first-react-app
+npm start
+\`\`\`
+
+This will create a new React application and start the development server.
+
+## Understanding Components
+
+In React, everything is a component. A component is a piece of the UI that can be reused. Here's a simple example:
+
+\`\`\`jsx
+function Welcome(props) {
+  return <h1>Hello, {props.name}!</h1>;
+}
+
+function App() {
+  return (
+    <div>
+      <Welcome name="Sara" />
+      <Welcome name="Cahal" />
+      <Welcome name="Edite" />
+    </div>
+  );
+}
+\`\`\`
+
+## State and Props
+
+- **Props**: Data passed down from parent components
+- **State**: Data that belongs to a component and can change over time
+
+\`\`\`jsx
+import { useState } from 'react';
+
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>You clicked {count} times</p>
+      <button onClick={() => setCount(count + 1)}>
+        Click me
+      </button>
+    </div>
+  );
+}
+\`\`\`
+
+## Next Steps
+
+1. Learn about JSX syntax
+2. Understand component lifecycle
+3. Explore React Hooks
+4. Learn about state management
+5. Build your first project
+
+## Conclusion
+
+React is a powerful tool for building modern web applications. Start with the basics, practice regularly, and don't be afraid to experiment. The React community is always there to help!
+
+Happy coding! 🚀`,
+        excerpt: 'Learn the fundamentals of React with this comprehensive beginner\'s guide. From setup to your first component, we\'ll cover everything you need to know.',
+        featuredImage: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=400&fit=crop',
+        status: 'PUBLISHED',
+        visibility: 'PUBLIC',
+        metaTitle: 'Getting Started with React - Complete Beginner\'s Guide',
+        metaDescription: 'Learn React from scratch with this comprehensive guide. Perfect for beginners who want to start building modern web applications.',
+        categoryIds: [categories.find(c => c.slug === 'web-development')?.id].filter(Boolean),
+        tagIds: [createdTags.find(t => t.slug === 'react')?.id, createdTags.find(t => t.slug === 'javascript')?.id, createdTags.find(t => t.slug === 'tutorial')?.id].filter(Boolean)
       },
       {
-        content: 'Thanks for sharing these insights. Looking forward to more content!',
-        postId: createdPosts[1].id,
-        authorId: adminUser.id,
-        status: 'APPROVED',
-        isApproved: true
+        title: 'Python for Data Science: Essential Libraries You Need to Know',
+        slug: 'python-data-science-essential-libraries',
+        content: `# Python for Data Science: Essential Libraries You Need to Know
+
+Python has become the go-to language for data science, thanks to its powerful libraries and easy-to-learn syntax. In this post, we'll explore the essential Python libraries every data scientist should know.
+
+## Why Python for Data Science?
+
+Python offers several advantages for data science:
+- **Easy to learn**: Simple syntax and readable code
+- **Rich ecosystem**: Extensive collection of libraries
+- **Community support**: Large, active community
+- **Integration**: Works well with other tools and languages
+- **Versatility**: Can handle everything from data collection to deployment
+
+## Essential Python Libraries
+
+### 1. NumPy
+NumPy is the foundation of the Python data science stack. It provides:
+- N-dimensional arrays
+- Mathematical functions
+- Linear algebra operations
+- Random number generation
+
+\`\`\`python
+import numpy as np
+
+# Create an array
+arr = np.array([1, 2, 3, 4, 5])
+print(arr.mean())  # 3.0
+\`\`\`
+
+### 2. Pandas
+Pandas is perfect for data manipulation and analysis:
+- DataFrames and Series
+- Data cleaning and preprocessing
+- Data aggregation and grouping
+- Time series analysis
+
+\`\`\`python
+import pandas as pd
+
+# Create a DataFrame
+df = pd.DataFrame({
+    'Name': ['Alice', 'Bob', 'Charlie'],
+    'Age': [25, 30, 35],
+    'City': ['New York', 'London', 'Tokyo']
+})
+print(df.head())
+\`\`\`
+
+### 3. Matplotlib
+Matplotlib is the most popular plotting library:
+- Static, animated, and interactive visualizations
+- Publication-quality figures
+- Customizable plots
+- Integration with Jupyter notebooks
+
+\`\`\`python
+import matplotlib.pyplot as plt
+
+# Create a simple plot
+x = np.linspace(0, 10, 100)
+y = np.sin(x)
+plt.plot(x, y)
+plt.title('Sine Wave')
+plt.show()
+\`\`\`
+
+### 4. Seaborn
+Seaborn builds on matplotlib for statistical visualizations:
+- Beautiful default styles
+- Statistical plotting functions
+- Easy-to-use interface
+- Integration with pandas
+
+### 5. Scikit-learn
+Scikit-learn is the go-to library for machine learning:
+- Classification, regression, clustering
+- Model selection and evaluation
+- Data preprocessing
+- Dimensionality reduction
+
+\`\`\`python
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+# Simple linear regression example
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+model = LinearRegression()
+model.fit(X_train, y_train)
+predictions = model.predict(X_test)
+\`\`\`
+
+## Getting Started
+
+1. **Install Python**: Use Anaconda or pip
+2. **Set up Jupyter**: For interactive development
+3. **Learn the basics**: Start with NumPy and Pandas
+4. **Practice**: Work on real datasets
+5. **Explore**: Try different libraries for your specific needs
+
+## Conclusion
+
+These libraries form the foundation of Python data science. Start with NumPy and Pandas, then gradually add others based on your needs. Remember, the best way to learn is by doing!
+
+Happy analyzing! 📊`,
+        excerpt: 'Discover the essential Python libraries every data scientist needs to know. From NumPy to Scikit-learn, learn how to build powerful data science workflows.',
+        featuredImage: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop',
+        status: 'PUBLISHED',
+        visibility: 'PUBLIC',
+        metaTitle: 'Python Data Science Libraries - Essential Guide',
+        metaDescription: 'Learn about the essential Python libraries for data science including NumPy, Pandas, Matplotlib, and Scikit-learn.',
+        categoryIds: [categories.find(c => c.slug === 'data-science')?.id].filter(Boolean),
+        tagIds: [createdTags.find(t => t.slug === 'python')?.id, createdTags.find(t => t.slug === 'machine-learning')?.id, createdTags.find(t => t.slug === 'tips')?.id].filter(Boolean)
       },
       {
-        content: 'This is exactly what I was looking for. Clear and concise explanation.',
-        postId: createdPosts[2].id,
-        authorId: adminUser.id,
-        status: 'PENDING',
-        isApproved: false
+        title: '10 JavaScript Tips That Will Make You a Better Developer',
+        slug: '10-javascript-tips-better-developer',
+        content: `# 10 JavaScript Tips That Will Make You a Better Developer
+
+JavaScript is a powerful and flexible language, but it can be tricky to master. Here are 10 essential tips that will help you write better, more efficient JavaScript code.
+
+## 1. Use const and let Instead of var
+
+Always prefer \`const\` and \`let\` over \`var\` for better block scoping:
+
+\`\`\`javascript
+// Good
+const name = 'John';
+let age = 25;
+
+// Avoid
+var name = 'John';
+var age = 25;
+\`\`\`
+
+## 2. Use Template Literals
+
+Template literals make string concatenation much cleaner:
+
+\`\`\`javascript
+// Good
+const message = \`Hello, \${name}! You are \${age} years old.\`;
+
+// Avoid
+const message = 'Hello, ' + name + '! You are ' + age + ' years old.';
+\`\`\`
+
+## 3. Use Destructuring
+
+Destructuring makes your code more readable and concise:
+
+\`\`\`javascript
+// Object destructuring
+const { name, age, city } = user;
+
+// Array destructuring
+const [first, second, third] = array;
+\`\`\`
+
+## 4. Use Arrow Functions
+
+Arrow functions provide a more concise syntax:
+
+\`\`\`javascript
+// Good
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+
+// Traditional function
+const doubled = numbers.map(function(n) {
+  return n * 2;
+});
+\`\`\`
+
+## 5. Use Array Methods Effectively
+
+Learn and use array methods like \`map\`, \`filter\`, \`reduce\`:
+
+\`\`\`javascript
+const users = [
+  { name: 'John', age: 25, active: true },
+  { name: 'Jane', age: 30, active: false },
+  { name: 'Bob', age: 35, active: true }
+];
+
+// Get active users
+const activeUsers = users.filter(user => user.active);
+
+// Get user names
+const names = users.map(user => user.name);
+
+// Calculate average age
+const avgAge = users.reduce((sum, user) => sum + user.age, 0) / users.length;
+\`\`\`
+
+## 6. Use Optional Chaining
+
+Optional chaining (\`?.\`) helps avoid errors when accessing nested properties:
+
+\`\`\`javascript
+// Safe property access
+const city = user?.address?.city;
+
+// Safe method calling
+const result = user?.getName?.();
+\`\`\`
+
+## 7. Use Nullish Coalescing
+
+The nullish coalescing operator (\`??\`) provides a default value:
+
+\`\`\`javascript
+const name = user.name ?? 'Anonymous';
+const count = data.count ?? 0;
+\`\`\`
+
+## 8. Use Async/Await
+
+Async/await makes asynchronous code more readable:
+
+\`\`\`javascript
+// Good
+async function fetchUser(id) {
+  try {
+    const response = await fetch(\`/api/users/\${id}\`);
+    const user = await response.json();
+    return user;
+  } catch (error) {
+    console.error('Error fetching user:', error);
+  }
+}
+
+// Avoid callback hell
+function fetchUser(id, callback) {
+  fetch(\`/api/users/\${id}\`)
+    .then(response => response.json())
+    .then(user => callback(null, user))
+    .catch(error => callback(error, null));
+}
+\`\`\`
+
+## 9. Use Object Spread
+
+Object spread makes object manipulation easier:
+
+\`\`\`javascript
+const user = { name: 'John', age: 25 };
+const updatedUser = { ...user, age: 26 };
+
+// Merging objects
+const config = { ...defaultConfig, ...userConfig };
+\`\`\`
+
+## 10. Use Modern ES6+ Features
+
+Take advantage of modern JavaScript features:
+
+\`\`\`javascript
+// Default parameters
+function greet(name = 'World') {
+  return \`Hello, \${name}!\`;
+}
+
+// Rest parameters
+function sum(...numbers) {
+  return numbers.reduce((total, num) => total + num, 0);
+}
+
+// Modules
+import { helper } from './utils.js';
+export const myFunction = () => { /* ... */ };
+\`\`\`
+
+## Bonus Tip: Use a Linter
+
+Use ESLint to catch common mistakes and enforce coding standards:
+
+\`\`\`bash
+npm install --save-dev eslint
+npx eslint --init
+\`\`\`
+
+## Conclusion
+
+These tips will help you write more maintainable, readable, and efficient JavaScript code. Practice them regularly, and they'll become second nature.
+
+Remember, the best way to improve is through consistent practice and staying updated with the latest JavaScript features.
+
+Happy coding! 🚀`,
+        excerpt: 'Master JavaScript with these 10 essential tips that will make you a better developer. From modern ES6+ features to best practices.',
+        featuredImage: 'https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=800&h=400&fit=crop',
+        status: 'PUBLISHED',
+        visibility: 'PUBLIC',
+        metaTitle: '10 JavaScript Tips for Better Development',
+        metaDescription: 'Learn 10 essential JavaScript tips and best practices that will make you a more efficient and skilled developer.',
+        categoryIds: [categories.find(c => c.slug === 'web-development')?.id].filter(Boolean),
+        tagIds: [createdTags.find(t => t.slug === 'javascript')?.id, createdTags.find(t => t.slug === 'tips')?.id, createdTags.find(t => t.slug === 'career')?.id].filter(Boolean)
       }
     ]
 
-    for (const comment of comments) {
-      const created = await prisma.comment.create({
-        data: comment
+    for (const postData of blogPosts) {
+      const existingPost = await prisma.post.findUnique({
+        where: { slug: postData.slug }
       })
-      console.log(`✅ Created comment: "${created.content.substring(0, 50)}..."`)
+
+      if (!existingPost) {
+        // Create the post
+        const post = await prisma.post.create({
+          data: {
+            title: postData.title,
+            slug: postData.slug,
+            content: postData.content,
+            excerpt: postData.excerpt,
+            featuredImage: postData.featuredImage,
+            status: postData.status,
+            visibility: postData.visibility,
+                    metaTitle: postData.metaTitle,
+            authorId: author.id,
+            publishedAt: new Date()
+          }
+        })
+
+        // Add categories
+        if (postData.categoryIds.length > 0) {
+          for (const categoryId of postData.categoryIds) {
+            await prisma.postCategory.create({
+              data: {
+                postId: post.id,
+                categoryId: categoryId,
+                status: 'PUBLISHED',
+                publishedAt: new Date()
+              }
+            })
+          }
+        }
+
+        // Add tags
+        if (postData.tagIds.length > 0) {
+          for (const tagId of postData.tagIds) {
+            await prisma.postTag.create({
+              data: {
+                postId: post.id,
+                tagId: tagId
+              }
+            })
+          }
+        }
+
+        console.log(`✅ Created blog post: ${post.title}`)
+      } else {
+        console.log(`ℹ️  Blog post already exists: ${existingPost.title}`)
+      }
     }
 
-    console.log('\n🎉 WordPress-like blog data seeded successfully!')
-    console.log('\n📊 Blog Statistics:')
-    console.log(`   - Categories: ${createdCategories.length}`)
-    console.log(`   - Tags: ${createdTags.length}`)
-    console.log(`   - Posts: ${createdPosts.length}`)
-    console.log(`   - Comments: ${comments.length}`)
-
-    console.log('\n🌐 Test the blog at: http://localhost:3000/admin/dashboard')
-    console.log('🔐 Login with: admin@example.com / admin123')
-    console.log('📝 Click "Manage Blog" to access the WordPress-like blog dashboard')
+    console.log('🎉 Blog data seeded successfully!')
 
   } catch (error) {
-    console.error('❌ Blog seeding failed:', error.message)
+    console.error('❌ Error seeding blog data:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
 seedBlogData()
-  .catch((e) => {
-    console.error('❌ Seeding failed:', e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })

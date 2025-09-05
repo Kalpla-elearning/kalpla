@@ -18,6 +18,7 @@ interface CourseCardProps {
     description?: string
     thumbnail?: string | null
     price: number
+    currency?: string
     category?: string | null
     instructor?: {
       name: string
@@ -149,7 +150,7 @@ export default function CourseCard({
             {showPrice && (
               <div className="absolute top-3 right-3">
                 <span className="text-sm px-2 py-1 rounded-full font-semibold bg-primary-600 text-white">
-                  {course.price === 0 ? 'Free' : `$${course.price}`}
+                  {course.price === 0 ? 'Free' : `${course.currency === 'INR' ? '₹' : '$'}${course.price.toLocaleString()}`}
                 </span>
               </div>
             )}

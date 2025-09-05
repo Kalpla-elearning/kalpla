@@ -2,6 +2,7 @@
 
 import { SessionProvider } from 'next-auth/react'
 import { QueryClient, QueryClientProvider } from 'react-query'
+import { AuthProvider } from './AuthProvider'
 import { useState } from 'react'
 
 interface ProvidersProps {
@@ -20,9 +21,11 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </AuthProvider>
     </SessionProvider>
   )
 }

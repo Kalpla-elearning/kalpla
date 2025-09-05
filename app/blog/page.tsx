@@ -6,47 +6,52 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 export const dynamic = 'force-dynamic'
 
 async function getPosts() {
-  const posts = await prisma.post.findMany({
-    where: { status: 'PUBLISHED' },
-    orderBy: { publishedAt: 'desc' },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      excerpt: true,
-      featuredImage: true,
-      publishedAt: true,
-      author: { select: { id: true, name: true } },
-      categories: {
-        include: {
-          category: {
-            select: {
-              id: true,
-              name: true,
-              color: true
+  try {
+    const posts = await prisma.post.findMany({
+      where: { status: 'PUBLISHED' },
+      orderBy: { publishedAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        featuredImage: true,
+        publishedAt: true,
+        author: { select: { id: true, name: true } },
+        categories: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                color: true
+              }
             }
+          }
+        },
+        tags: {
+          include: {
+            tag: {
+              select: {
+                id: true,
+                name: true,
+                color: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            comments: true
           }
         }
       },
-      tags: {
-        include: {
-          tag: {
-            select: {
-              id: true,
-              name: true,
-              color: true
-            }
-          }
-        }
-      },
-      _count: {
-        select: {
-          comments: true
-        }
-      }
-    },
-  })
-  return posts
+    })
+    return posts
+  } catch (error) {
+    console.error('Error fetching posts:', error)
+    return []
+  }
 }
 
 export default async function BlogPage() {

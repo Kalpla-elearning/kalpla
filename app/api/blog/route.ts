@@ -40,9 +40,22 @@ export async function GET(request: NextRequest) {
     }
 
     if (category) {
-      where.categories = {
-        some: {
-          categoryId: category
+      // Check if category is an ID or slug
+      const isId = category.length > 20 // Assuming IDs are longer than 20 characters
+      
+      if (isId) {
+        where.categories = {
+          some: {
+            categoryId: category
+          }
+        }
+      } else {
+        where.categories = {
+          some: {
+            category: {
+              slug: category
+            }
+          }
         }
       }
     }

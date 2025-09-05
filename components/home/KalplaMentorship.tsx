@@ -27,7 +27,7 @@ const mentorshipFeatures = [
 const programHighlights = [
   '12-month intensive program',
   'Weekly 1-on-1 mentorship sessions',
-  'Access to $1M+ funding network',
+  'Access to ₹8.35Cr+ funding network',
   'Pitch deck development',
   'Market validation support',
   'Legal and business setup guidance',
@@ -113,7 +113,7 @@ export function KalplaMentorship() {
                 <div className="text-blue-100 text-sm">Success Rate</div>
               </div>
               <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 text-center">
-                <div className="text-3xl font-bold text-white mb-2">$50M+</div>
+                <div className="text-3xl font-bold text-white mb-2">₹417Cr+</div>
                 <div className="text-blue-100 text-sm">Total Funding Raised</div>
               </div>
             </div>
@@ -131,7 +131,7 @@ export function KalplaMentorship() {
               </div>
               <p className="text-blue-100 italic">
                 "The Kalpla mentorship program was a game-changer for my startup. 
-                The guidance and connections I gained helped me raise $2M in Series A funding."
+                The guidance and connections I gained helped me raise ₹16.7Cr in Series A funding."
               </p>
             </div>
           </div>

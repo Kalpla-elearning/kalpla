@@ -72,7 +72,7 @@ async function testDegreePrograms() {
       console.log(`      - Level: ${program.level}`)
       console.log(`      - Duration: ${program.duration}`)
       console.log(`      - Format: ${program.format}`)
-      console.log(`      - Price: $${program.price.toLocaleString()}`)
+      console.log(`      - Price: ₹${program.price.toLocaleString()}`)
       console.log(`      - Rating: ${program.rating}`)
       console.log(`      - Students: ${program.students}`)
     })

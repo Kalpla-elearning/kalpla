@@ -2,35 +2,45 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { PlayCircleIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import Image from 'next/image'
+import { PlayCircleIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon, RocketLaunchIcon, AcademicCapIcon } from '@heroicons/react/24/outline'
 
 const heroSlides = [
   {
     id: 1,
     title: "Master the Future of Technology",
     subtitle: "Learn cutting-edge skills from industry experts",
-            description: "Join 50,000+ professionals who have transformed their careers with our comprehensive learning platform.",
-    backgroundImage: "bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700",
+    description: "Join 50,000+ professionals who have transformed their careers with our comprehensive learning platform.",
+    backgroundImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1920&h=1080&fit=crop&crop=center",
+    overlay: "bg-gradient-to-br from-blue-600/90 via-purple-600/90 to-indigo-700/90",
     ctaText: "Start Learning Today",
-    ctaLink: "/courses"
+    ctaLink: "/courses",
+    icon: AcademicCapIcon,
+    stats: "50,000+ Students"
   },
   {
     id: 2,
     title: "Build Your Dream Startup",
     subtitle: "12-Month Mentorship Program",
     description: "Get personalized guidance from successful entrepreneurs and build your next unicorn startup.",
-    backgroundImage: "bg-gradient-to-br from-accent-500 via-accent-600 to-accent-700",
+    backgroundImage: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=1920&h=1080&fit=crop&crop=center",
+    overlay: "bg-gradient-to-br from-emerald-600/90 via-teal-600/90 to-cyan-700/90",
     ctaText: "Join Mentorship",
-    ctaLink: "/mentorship"
+    ctaLink: "/mentorship",
+    icon: RocketLaunchIcon,
+    stats: "500+ Startups Launched"
   },
   {
     id: 3,
     title: "Earn Industry-Recognized Degrees",
     subtitle: "Accredited Online Programs",
     description: "Advance your career with our comprehensive degree programs designed by top universities.",
-    backgroundImage: "bg-gradient-to-br from-primary-600 via-accent-500 to-primary-700",
+    backgroundImage: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1920&h=1080&fit=crop&crop=center",
+    overlay: "bg-gradient-to-br from-orange-600/90 via-red-600/90 to-pink-700/90",
     ctaText: "Explore Degrees",
-    ctaLink: "/degrees"
+    ctaLink: "/degrees",
+    icon: SparklesIcon,
+    stats: "95% Success Rate"
   }
 ]
 
@@ -65,7 +75,7 @@ export function HeroCarousel() {
 
   return (
     <section className="relative h-screen overflow-hidden">
-      {/* Background Slides */}
+      {/* Background Slides with Images */}
       {heroSlides.map((slide, index) => (
         <div
           key={slide.id}
@@ -73,26 +83,46 @@ export function HeroCarousel() {
             index === currentSlide ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          <div className={`absolute inset-0 ${slide.backgroundImage}`}>
-            <div className="absolute inset-0 bg-black bg-opacity-40" />
+          <div className="absolute inset-0">
+            <Image
+              src={slide.backgroundImage}
+              alt={slide.title}
+              fill
+              className="object-cover"
+              priority={index === 0}
+            />
+            <div className={`absolute inset-0 ${slide.overlay}`} />
           </div>
         </div>
       ))}
 
       {/* Content */}
-      <div className="relative h-full flex items-center">
+      <div className="relative h-full flex items-center z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div className="text-white space-y-8">
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Icon and Stats */}
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                    {(() => {
+                      const IconComponent = heroSlides[currentSlide].icon
+                      return <IconComponent className="h-8 w-8 text-white" />
+                    })()}
+                  </div>
+                  <div className="text-sm font-medium text-white/90">
+                    {heroSlides[currentSlide].stats}
+                  </div>
+                </div>
+
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
                   {heroSlides[currentSlide].title}
                 </h1>
-                <h2 className="text-2xl md:text-3xl text-blue-200 font-semibold">
+                <h2 className="text-2xl md:text-3xl text-white/90 font-semibold">
                   {heroSlides[currentSlide].subtitle}
                 </h2>
-                <p className="text-xl text-gray-200 max-w-2xl">
+                <p className="text-xl text-white/80 max-w-2xl leading-relaxed">
                   {heroSlides[currentSlide].description}
                 </p>
               </div>
@@ -100,13 +130,13 @@ export function HeroCarousel() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href={heroSlides[currentSlide].ctaLink}
-                  className="bg-white text-gray-900 hover:bg-gray-100 font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg inline-flex items-center justify-center"
+                  className="group bg-white text-gray-900 hover:bg-gray-100 font-semibold py-4 px-8 rounded-xl transition-all duration-300 text-lg inline-flex items-center justify-center shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
                 >
                   <span>{heroSlides[currentSlide].ctaText}</span>
-                  <ArrowRightIcon className="h-5 w-5 ml-2" />
+                  <ArrowRightIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
                 </Link>
-                <button className="border-2 border-white text-white hover:bg-white hover:text-gray-900 font-semibold py-4 px-8 rounded-lg transition-colors duration-200 text-lg inline-flex items-center justify-center">
-                  <PlayCircleIcon className="h-6 w-6 mr-2" />
+                <button className="group border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold py-4 px-8 rounded-xl transition-all duration-300 text-lg inline-flex items-center justify-center backdrop-blur-sm">
+                  <PlayCircleIcon className="h-6 w-6 mr-2 group-hover:scale-110 transition-transform duration-200" />
                   <span>Watch Demo</span>
                 </button>
               </div>
@@ -122,7 +152,7 @@ export function HeroCarousel() {
                       />
                     ))}
                   </div>
-                  <span className="text-white">Join 50,000+ students</span>
+                  <span className="text-white/90">Join 50,000+ students</span>
                 </div>
                 
                 <div className="flex items-center">
@@ -137,41 +167,57 @@ export function HeroCarousel() {
                       </svg>
                     ))}
                   </div>
-                  <span className="text-white">4.9/5 average rating</span>
+                  <span className="text-white/90">4.9/5 average rating</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Visual */}
+            {/* Right Visual - Enhanced */}
             <div className="hidden lg:block">
               <div className="relative">
-                <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-3xl p-8 transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                  <div className="aspect-video bg-white bg-opacity-20 rounded-2xl mb-6 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <PlayCircleIcon className="h-10 w-10 text-gray-900" />
+                {/* Main Card */}
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 transform rotate-2 hover:rotate-0 transition-all duration-700 shadow-2xl border border-white/20">
+                  <div className="aspect-video bg-white/20 rounded-2xl mb-6 flex items-center justify-center relative overflow-hidden">
+                    <Image
+                      src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop&crop=center"
+                      alt="Learning Platform"
+                      fill
+                      className="object-cover rounded-2xl"
+                    />
+                    <div className="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                          <PlayCircleIcon className="h-10 w-10 text-gray-900" />
+                        </div>
+                        <p className="text-white font-medium">Interactive Learning</p>
                       </div>
-                      <p className="text-white font-medium">Interactive Learning</p>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="h-4 bg-white bg-opacity-30 rounded w-3/4"></div>
-                    <div className="h-3 bg-white bg-opacity-20 rounded w-1/2"></div>
-                    <div className="h-3 bg-white bg-opacity-20 rounded w-2/3"></div>
+                    <div className="h-4 bg-white/30 rounded w-3/4"></div>
+                    <div className="h-3 bg-white/20 rounded w-1/2"></div>
+                    <div className="h-3 bg-white/20 rounded w-2/3"></div>
                   </div>
                 </div>
 
-                {/* Floating Elements */}
-                <div className="absolute -top-6 -right-6 bg-green-500 rounded-full p-4 shadow-lg">
+                {/* Floating Elements - Enhanced */}
+                <div className="absolute -top-6 -right-6 bg-green-500 rounded-full p-4 shadow-xl animate-bounce">
                   <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                     <span className="text-green-500 text-sm font-bold">✓</span>
                   </div>
                 </div>
                 
-                <div className="absolute -bottom-6 -left-6 bg-yellow-500 rounded-full p-4 shadow-lg">
+                <div className="absolute -bottom-6 -left-6 bg-yellow-500 rounded-full p-4 shadow-xl animate-pulse">
                   <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                     <span className="text-yellow-500 text-sm font-bold">★</span>
+                  </div>
+                </div>
+
+                {/* Additional floating elements */}
+                <div className="absolute top-1/2 -left-4 bg-blue-500 rounded-full p-3 shadow-lg animate-ping">
+                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                    <span className="text-blue-500 text-xs font-bold">💡</span>
                   </div>
                 </div>
               </div>
@@ -180,33 +226,43 @@ export function HeroCarousel() {
         </div>
       </div>
 
-      {/* Navigation Controls */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-4">
+      {/* Navigation Controls - Enhanced */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-4 z-20">
         {heroSlides.map((_, index) => (
           <button
             key={index}
             onClick={() => goToSlide(index)}
-            className={`w-3 h-3 rounded-full transition-colors duration-200 ${
-              index === currentSlide ? 'bg-white' : 'bg-white bg-opacity-50'
+            className={`w-4 h-4 rounded-full transition-all duration-300 ${
+              index === currentSlide 
+                ? 'bg-white shadow-lg scale-125' 
+                : 'bg-white/50 hover:bg-white/70 hover:scale-110'
             }`}
           />
         ))}
       </div>
 
-      {/* Arrow Controls */}
+      {/* Arrow Controls - Enhanced */}
       <button
         onClick={goToPrevious}
-        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-colors duration-200"
+        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-4 rounded-full transition-all duration-300 backdrop-blur-sm border border-white/30 hover:scale-110 z-20"
       >
         <ChevronLeftIcon className="h-6 w-6" />
       </button>
       
       <button
         onClick={goToNext}
-        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-3 rounded-full transition-colors duration-200"
+        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-4 rounded-full transition-all duration-300 backdrop-blur-sm border border-white/30 hover:scale-110 z-20"
       >
         <ChevronRightIcon className="h-6 w-6" />
       </button>
+
+      {/* Progress Bar */}
+      <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20 z-20">
+        <div 
+          className="h-full bg-white transition-all duration-1000 ease-out"
+          style={{ width: `${((currentSlide + 1) / heroSlides.length) * 100}%` }}
+        />
+      </div>
     </section>
   )
 }

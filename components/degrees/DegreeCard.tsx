@@ -122,14 +122,25 @@ export default function DegreeCard({ program, variant = 'default' }: DegreeCardP
         {/* Features */}
         <div className="mb-4">
           <div className="flex flex-wrap gap-1">
-            {program.features.slice(0, 3).map((feature, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700"
-              >
-                {feature}
-              </span>
-            ))}
+            {(() => {
+              try {
+                const features = typeof program.features === 'string' 
+                  ? JSON.parse(program.features) 
+                  : program.features || []
+                return Array.isArray(features) 
+                  ? features.slice(0, 3).map((feature, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700"
+                      >
+                        {feature}
+                      </span>
+                    ))
+                  : []
+              } catch (error) {
+                return []
+              }
+            })()}
           </div>
         </div>
 

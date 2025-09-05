@@ -16,8 +16,22 @@ import {
   CalendarIcon,
   EyeIcon,
   HeartIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  CurrencyDollarIcon,
+  TrophyIcon,
+  ShieldCheckIcon,
+  ArrowRightIcon,
+  SparklesIcon,
+  UserGroupIcon,
+  LightBulbIcon,
+  RocketLaunchIcon,
+  ClockIcon as ClockIconSolid,
+  GlobeAltIcon,
+  PhoneIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
+import CourseEnrollmentButton from '@/components/courses/CourseEnrollmentButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,7 +68,8 @@ async function getCourse(slug: string) {
               avatar: true
             }
           }
-        }
+        },
+        take: 5
       },
       reviews: {
         include: {
@@ -66,7 +81,7 @@ async function getCourse(slug: string) {
             }
           }
         },
-        orderBy: { createdAt: 'desc' }
+        take: 10
       },
       _count: {
         select: {
@@ -79,17 +94,20 @@ async function getCourse(slug: string) {
   return course
 }
 
-async function getRelatedCourses(courseId: string, category: string) {
+async function getRelatedCourses(category: string, currentId: string) {
   const courses = await prisma.course.findMany({
     where: {
-      id: { not: courseId },
-      category: category,
-      status: 'PUBLISHED'
+      category,
+      status: 'PUBLISHED',
+      id: { not: currentId }
     },
+    take: 3,
     include: {
       instructor: {
         select: {
-          name: true
+          id: true,
+          name: true,
+          avatar: true
         }
       },
       _count: {
@@ -98,40 +116,95 @@ async function getRelatedCourses(courseId: string, category: string) {
           reviews: true
         }
       }
-    },
-    take: 3,
-    orderBy: { createdAt: 'desc' }
+    }
   })
   return courses
 }
 
 export default async function CoursePage({ params }: { params: { slug: string } }) {
   const course = await getCourse(params.slug)
-  
+
   if (!course) {
     notFound()
   }
 
-  const relatedCourses = await getRelatedCourses(course.id, course.category || '')
+  const relatedCourses = await getRelatedCourses(course.category, course.id)
 
-  // Calculate course statistics
-  const totalLessons = course.modules.reduce((sum, module) => sum + module.contents.length, 0)
-  const avgRating = course.reviews.length > 0 
-    ? course.reviews.reduce((acc, review) => acc + review.rating, 0) / course.reviews.length
+  // Calculate total duration
+  const totalDuration = course.modules.reduce((sum, module) =>
+    sum + module.contents.reduce((contentSum, content) => contentSum + (content.duration || 0), 0), 0
+  )
+
+  // Calculate average rating
+  const avgRating = course._count.reviews > 0
+    ? course.reviews.reduce((sum, review) => sum + review.rating, 0) / course._count.reviews
     : 0
+
+  // Format duration
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`
+    }
+    return `${minutes}m`
+  }
+
+  // Course outcomes (you can customize these based on course data)
+  const courseOutcomes = [
+    "Master the fundamentals and advanced concepts",
+    "Build real-world projects and applications",
+    "Get hands-on experience with industry tools",
+    "Receive a completion certificate",
+    "Join a community of like-minded learners",
+    "Access to lifetime course updates"
+  ]
+
+  // Who is this course for
+  const targetAudience = [
+    "Beginners looking to start their journey",
+    "Professionals wanting to upskill",
+    "Students seeking practical knowledge",
+    "Anyone interested in this field"
+  ]
+
+  // FAQ data
+  const faqs = [
+    {
+      question: "Is this course beginner-friendly?",
+      answer: "Yes! This course is designed for complete beginners with no prior experience required."
+    },
+    {
+      question: "Do I need any prerequisites?",
+      answer: "No specific prerequisites are required. We start from the basics and build up gradually."
+    },
+    {
+      question: "Will I get lifetime access?",
+      answer: "Yes, once you enroll, you'll have lifetime access to all course materials and updates."
+    },
+    {
+      question: "What if I don't like the course?",
+      answer: "We offer a 30-day money-back guarantee if you're not satisfied with the course."
+    },
+    {
+      question: "Can I learn at my own pace?",
+      answer: "Absolutely! You can learn at your own pace and access the materials anytime."
+    }
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
+      {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link 
-            href="/courses" 
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <ArrowLeftIcon className="h-4 w-4 mr-2" />
-            Back to Courses
-          </Link>
+          <nav className="flex items-center space-x-2 text-sm text-gray-600">
+            <Link href="/courses" className="hover:text-primary-600 flex items-center">
+              <ArrowLeftIcon className="h-4 w-4 mr-1" />
+              All Courses
+            </Link>
+            <span>/</span>
+            <span className="text-gray-900">{course.title}</span>
+          </nav>
         </div>
       </div>
 
@@ -139,135 +212,110 @@ export default async function CoursePage({ params }: { params: { slug: string } 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Course Header */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
-              {/* Course Image */}
-              <div className="aspect-[16/9] bg-gray-100 relative">
-                {course.thumbnail ? (
-                  <img 
-                    src={course.thumbnail} 
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-100 to-primary-200">
-                    <AcademicCapIcon className="h-16 w-16 text-primary-600" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-                  <PlayCircleIcon className="h-16 w-16 text-white" />
-                </div>
-              </div>
-
-              <div className="p-6">
-                {/* Category */}
-                {course.category && (
-                  <div className="mb-4">
-                    <span className="text-sm px-3 py-1 rounded-full font-medium bg-primary-100 text-primary-700">
-                      {course.category}
-                    </span>
-                  </div>
-                )}
-
-                {/* Title */}
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                  {course.title}
-                </h1>
-
-                {/* Description */}
-                <p className="text-gray-600 text-lg mb-6">
-                  {course.description}
-                </p>
-
-                {/* Course Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center mb-2">
-                      <ClockIcon className="h-5 w-5 text-gray-400 mr-2" />
+            {/* 1. Hero Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <h1 className="text-4xl font-bold text-gray-900 mb-4">{course.title}</h1>
+                  <p className="text-xl text-gray-600 mb-6">{course.description}</p>
+                  
+                  {/* Course Stats */}
+                  <div className="flex items-center space-x-6 text-sm text-gray-600 mb-6">
+                    <div className="flex items-center">
+                      <ClockIcon className="h-4 w-4 mr-1" />
+                      {formatDuration(totalDuration)}
                     </div>
-                    <div className="text-lg font-semibold text-gray-900">
-                      Self-paced
+                    <div className="flex items-center">
+                      <UserIcon className="h-4 w-4 mr-1" />
+                      {course.level}
                     </div>
-                    <div className="text-sm text-gray-500">Duration</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center mb-2">
-                      <PlayCircleIcon className="h-5 w-5 text-gray-400 mr-2" />
+                    <div className="flex items-center">
+                      <BookOpenIcon className="h-4 w-4 mr-1" />
+                      {course.modules.length} Modules
                     </div>
-                    <div className="text-lg font-semibold text-gray-900">{totalLessons}</div>
-                    <div className="text-sm text-gray-500">Lessons</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center mb-2">
-                      <StarIcon className="h-5 w-5 text-yellow-400 fill-current mr-2" />
+                    <div className="flex items-center">
+                      <StarIconSolid className="h-4 w-4 text-yellow-400 mr-1" />
+                      {avgRating.toFixed(1)} ({course._count.reviews} reviews)
                     </div>
-                    <div className="text-lg font-semibold text-gray-900">{avgRating.toFixed(1)}</div>
-                    <div className="text-sm text-gray-500">Rating</div>
                   </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center mb-2">
-                      <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
-                    </div>
-                    <div className="text-lg font-semibold text-gray-900">{course._count.enrollments}</div>
-                    <div className="text-sm text-gray-500">Students</div>
-                  </div>
-                </div>
 
-                {/* Instructor */}
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                    <UserIcon className="h-6 w-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">{course.instructor.name}</div>
-                    <div className="text-sm text-gray-600">Course Instructor</div>
+                  {/* CTA Button */}
+                  <div className="flex items-center space-x-4">
+                    <CourseEnrollmentButton 
+                      courseId={course.id}
+                      courseTitle={course.title}
+                      amount={course.price}
+                      session={null}
+                    />
+                    <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                      <HeartIcon className="h-4 w-4 mr-2" />
+                      Add to Wishlist
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Curriculum */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Course Curriculum</h2>
-                <p className="text-gray-600 mt-2">
-                  {course.modules.length} modules • {totalLessons} lessons • Self-paced
-                </p>
+            {/* 2. What You'll Learn (Outcomes) */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <SparklesIcon className="h-6 w-6 text-primary-600 mr-2" />
+                What You'll Learn
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {courseOutcomes.map((outcome, index) => (
+                  <div key={index} className="flex items-start">
+                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-700">{outcome}</span>
+                  </div>
+                ))}
               </div>
-              <div className="divide-y divide-gray-200">
-                {course.modules.map((module, moduleIndex) => (
-                  <div key={module.id} className="p-6">
+            </div>
+
+            {/* 3. Who is This Course For? */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <UserGroupIcon className="h-6 w-6 text-primary-600 mr-2" />
+                Who is This Course For?
+              </h2>
+              <div className="space-y-3">
+                {targetAudience.map((audience, index) => (
+                  <div key={index} className="flex items-start">
+                    <div className="w-2 h-2 bg-primary-600 rounded-full mr-3 mt-2 flex-shrink-0"></div>
+                    <span className="text-gray-700">{audience}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 4. Course Structure (Modules/Timeline) */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <BookOpenIcon className="h-6 w-6 text-primary-600 mr-2" />
+                Course Structure
+              </h2>
+              <div className="space-y-4">
+                {course.modules.map((module, index) => (
+                  <div key={module.id} className="border border-gray-200 rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        Module {moduleIndex + 1}: {module.title}
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Module {index + 1}: {module.title}
                       </h3>
                       <span className="text-sm text-gray-500">
                         {module.contents.length} lessons
                       </span>
                     </div>
-                    {module.description && (
-                      <p className="text-gray-600 mb-4">{module.description}</p>
-                    )}
-                    <div className="space-y-3">
+                    <p className="text-gray-600 mb-4">{module.description}</p>
+                    <div className="space-y-2">
                       {module.contents.map((content, contentIndex) => (
-                        <div key={content.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <div className="flex-shrink-0">
-                            {content.type === 'VIDEO' && <VideoCameraIcon className="h-5 w-5 text-red-500" />}
-                            {content.type === 'PDF' && <DocumentTextIcon className="h-5 w-5 text-blue-500" />}
-                            {content.type === 'QUIZ' && <QuestionMarkCircleIcon className="h-5 w-5 text-purple-500" />}
-                            {content.type === 'TEXT' && <BookOpenIcon className="h-5 w-5 text-green-500" />}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {contentIndex + 1}. {content.title}
-                            </div>
-                            {content.description && (
-                              <div className="text-sm text-gray-600">{content.description}</div>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0 text-sm text-gray-500">
-                            N/A
-                          </div>
+                        <div key={content.id} className="flex items-center text-sm text-gray-600">
+                          <PlayCircleIcon className="h-4 w-4 text-gray-400 mr-2" />
+                          <span>{content.title}</span>
+                          {content.duration && (
+                            <span className="ml-auto text-gray-500">
+                              {formatDuration(content.duration)}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -276,116 +324,237 @@ export default async function CoursePage({ params }: { params: { slug: string } 
               </div>
             </div>
 
-            {/* Reviews */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">Student Reviews</h2>
-                  <div className="flex items-center gap-2">
-                    <StarIcon className="h-5 w-5 text-yellow-400 fill-current" />
-                    <span className="font-semibold">{avgRating.toFixed(1)}</span>
-                    <span className="text-gray-500">({course.reviews.length} reviews)</span>
+            {/* 5. Course Format */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <GlobeAltIcon className="h-6 w-6 text-primary-600 mr-2" />
+                Course Format
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <ClockIcon className="h-5 w-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">Duration</p>
+                      <p className="text-gray-600">{formatDuration(totalDuration)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <VideoCameraIcon className="h-5 w-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">Format</p>
+                      <p className="text-gray-600">Self-paced online</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <TrophyIcon className="h-5 w-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">Certification</p>
+                      <p className="text-gray-600">Completion certificate</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <ShieldCheckIcon className="h-5 w-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">Access</p>
+                      <p className="text-gray-600">Lifetime access</p>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="divide-y divide-gray-200">
-                {course.reviews.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
-                    No reviews yet. Be the first to review this course!
+            </div>
+
+            {/* 6. Instructor Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <AcademicCapIcon className="h-6 w-6 text-primary-600 mr-2" />
+                Meet Your Instructor
+              </h2>
+              <div className="flex items-start space-x-6">
+                <div className="flex-shrink-0">
+                  {course.instructor.avatar ? (
+                    <img
+                      src={course.instructor.avatar}
+                      alt={course.instructor.name}
+                      className="h-20 w-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center">
+                      <UserIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    {course.instructor.name}
+                  </h3>
+                  <p className="text-gray-600 mb-4">{course.instructor.bio}</p>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <EnvelopeIcon className="h-4 w-4 mr-1" />
+                      {course.instructor.email}
+                    </div>
                   </div>
-                ) : (
-                  course.reviews.map((review) => (
-                    <div key={review.id} className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                          <UserIcon className="h-5 w-5 text-primary-600" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="font-medium text-gray-900">{review.user.name}</div>
-                            <div className="flex items-center">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <StarIcon
-                                  key={star}
-                                  className={`h-4 w-4 ${
-                                    star <= review.rating
-                                      ? 'text-yellow-400 fill-current'
-                                      : 'text-gray-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 7. Student Success & Testimonials */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <TrophyIcon className="h-6 w-6 text-primary-600 mr-2" />
+                Student Success Stories
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {course.reviews.slice(0, 4).map((review) => (
+                  <div key={review.id} className="border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center mb-4">
+                      <div className="flex-shrink-0">
+                        {review.user.avatar ? (
+                          <img
+                            src={review.user.avatar}
+                            alt={review.user.name}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <UserIcon className="h-5 w-5 text-gray-400" />
                           </div>
-                          {review.comment && (
-                            <p className="text-gray-600">{review.comment}</p>
-                          )}
-                          <div className="text-sm text-gray-500 mt-2">
-                            {new Date(review.createdAt).toLocaleDateString()}
-                          </div>
+                        )}
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-gray-900">{review.user.name}</p>
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <StarIconSolid
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < review.rating ? 'text-yellow-400' : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
+                    <p className="text-gray-600 text-sm">{review.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 8. Pricing & Enrollment Options */}
+            <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <CurrencyDollarIcon className="h-6 w-6 text-primary-600 mr-2" />
+                Pricing & Enrollment
+              </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-baseline">
+                    <span className="text-4xl font-bold text-gray-900">
+                      ₹{course.price.toLocaleString()}
+                    </span>
+                    <span className="text-lg text-gray-500 ml-2">one-time</span>
+                  </div>
+                  <p className="text-gray-600 mt-2">Lifetime access • No recurring fees</p>
+                </div>
+                <div className="text-right">
+                  <CourseEnrollmentButton 
+                    courseId={course.id}
+                    courseTitle={course.title}
+                    amount={course.price}
+                    session={null}
+                  />
+                  <p className="text-sm text-gray-500 mt-2">30-day money-back guarantee</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 9. FAQ Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <QuestionMarkCircleIcon className="h-6 w-6 text-primary-600 mr-2" />
+                Frequently Asked Questions
+              </h2>
+              <div className="space-y-4">
+                {faqs.map((faq, index) => (
+                  <div key={index} className="border-b border-gray-200 pb-4">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{faq.question}</h3>
+                    <p className="text-gray-600">{faq.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 10. Closing Section (Motivational CTA) */}
+            <div className="bg-gradient-to-r from-primary-600 to-blue-600 rounded-lg text-white p-8 text-center">
+              <h2 className="text-3xl font-bold mb-4">
+                Ready to Transform Your Skills?
+              </h2>
+              <p className="text-xl mb-6 opacity-90">
+                Join thousands of students who have already started their journey with this course.
+              </p>
+              <div className="flex items-center justify-center space-x-4">
+                <CourseEnrollmentButton 
+                  courseId={course.id}
+                  courseTitle={course.title}
+                  amount={course.price}
+                  session={null}
+                />
+                <div className="text-sm opacity-75">
+                  <p>✓ 30-day money-back guarantee</p>
+                  <p>✓ Lifetime access</p>
+                  <p>✓ Certificate of completion</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            {/* Enrollment Card */}
+            {/* Course Card */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 sticky top-8">
-              <div className="text-3xl font-bold text-primary-600 mb-4">
-                {course.price === 0 ? 'Free' : `$${course.price}`}
+              <div className="text-center mb-6">
+                <div className="text-3xl font-bold text-gray-900 mb-2">
+                  ₹{course.price.toLocaleString()}
+                </div>
+                <p className="text-gray-600">One-time payment</p>
               </div>
               
-              <button className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-primary-700 transition-colors mb-4">
-                Enroll Now
-              </button>
+              <CourseEnrollmentButton 
+                courseId={course.id}
+                courseTitle={course.title}
+                amount={course.price}
+                session={null}
+              />
               
-              <div className="text-sm text-gray-600 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                  <span>Full lifetime access</span>
+              <div className="mt-6 space-y-3 text-sm text-gray-600">
+                <div className="flex items-center justify-between">
+                  <span>Duration</span>
+                  <span>{formatDuration(totalDuration)}</span>
                 </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                  <span>Access on mobile and TV</span>
+                <div className="flex items-center justify-between">
+                  <span>Level</span>
+                  <span>{course.level}</span>
                 </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                  <span>Certificate of completion</span>
+                <div className="flex items-center justify-between">
+                  <span>Modules</span>
+                  <span>{course.modules.length}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                  <span>30-Day money-back guarantee</span>
+                <div className="flex items-center justify-between">
+                  <span>Students</span>
+                  <span>{course._count.enrollments}</span>
                 </div>
-              </div>
-
-              <div className="text-center">
-                <div className="text-sm text-gray-500">This course includes:</div>
-                <div className="text-lg font-semibold text-gray-900">{totalLessons} lessons</div>
-                <div className="text-sm text-gray-500">
-                  Self-paced content
-                </div>
-              </div>
-            </div>
-
-            {/* Instructor Card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">About the Instructor</h3>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-                  <UserIcon className="h-8 w-8 text-primary-600" />
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">{course.instructor.name}</div>
-                  <div className="text-sm text-gray-600">Course Instructor</div>
+                <div className="flex items-center justify-between">
+                  <span>Rating</span>
+                  <div className="flex items-center">
+                    <StarIconSolid className="h-4 w-4 text-yellow-400 mr-1" />
+                    <span>{avgRating.toFixed(1)}</span>
+                  </div>
                 </div>
               </div>
-              {course.instructor.bio && (
-                <p className="text-gray-600 text-sm">{course.instructor.bio}</p>
-              )}
             </div>
 
             {/* Related Courses */}
@@ -399,19 +568,30 @@ export default async function CoursePage({ params }: { params: { slug: string } 
                       href={`/courses/${relatedCourse.slug}`}
                       className="block group"
                     >
-                      <div className="flex gap-3">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <AcademicCapIcon className="h-6 w-6 text-gray-400" />
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0">
+                          <div className="w-16 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <PlayCircleIcon className="h-6 w-6 text-gray-400" />
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 group-hover:text-primary-600 transition-colors line-clamp-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 group-hover:text-primary-600">
                             {relatedCourse.title}
-                          </div>
-                          <div className="text-sm text-gray-600">
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
                             {relatedCourse.instructor.name}
-                          </div>
-                          <div className="text-sm font-semibold text-primary-600">
-                            {relatedCourse.price === 0 ? 'Free' : `$${relatedCourse.price}`}
+                          </p>
+                          <div className="flex items-center mt-1">
+                            <StarIconSolid className="h-3 w-3 text-yellow-400 mr-1" />
+                            <span className="text-xs text-gray-500">
+                              {relatedCourse._count.reviews > 0 
+                                ? (relatedCourse.reviews?.reduce((sum, r) => sum + r.rating, 0) / relatedCourse._count.reviews).toFixed(1)
+                                : '0.0'
+                              }
+                            </span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ₹{relatedCourse.price.toLocaleString()}
+                            </span>
                           </div>
                         </div>
                       </div>
